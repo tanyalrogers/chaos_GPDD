@@ -7,8 +7,8 @@ library("tidyr")
 library("rEDM")
 library("purrr")
 
-source("./Code/GPDD_stability_functions.R")
-load(file = "./Data/gpdd_d_v2.Rdata")
+source("./code/GPDD_stability_functions.R")
+load(file = "./data/gpdd_d_v2.Rdata")
 source("~/GRAD SCHOOL/R reference/ggplot themes rogers.R")
 
 # #test dataset
@@ -109,9 +109,6 @@ gpdd_d2$lle_avgbest= apply(gpdd_d2, 1, FUN=function(x) {unlist(x[paste0("lle_avg
 gpdd_d2$lle_ppbest= apply(gpdd_d2, 1, FUN=function(x) {unlist(x[paste0("lle_pp",x$bestmodel)])})
 gpdd_d2$glesign=ifelse(gpdd_d2$glebest>0, "positive", "negative")
 gpdd_d2$lle_avgsign=ifelse(gpdd_d2$lle_avgbest>0, "positive", "negative")
-
-focal_taxa=c("Aves","Osteichthyes", "Mammalia", "Bacillariophyceae", "Insecta")
-gpdd_d2$TaxonomicClass2=ifelse(gpdd_d2$TaxonomicClass %in% focal_taxa, as.character(gpdd_d2$TaxonomicClass), "Other")
 
 #temporary plots
 plot(lle_avgbest~glebest, data=gpdd_d2, xlim=c(-1,1), ylim=c(-1,1))

@@ -15,17 +15,14 @@ library("purrr")
 #Knape and Valpine 2012 MainID (627)
 #"removing harvest and nonindex based data, data sampled at non-annual intervals 
 # and time series taking less than 15 unique values" #no length constraint, median 23.
-#    kvMainID=read.csv("Data/KnapeValpineMainID.csv")
 
 #Clark Luis 2019 (640)
 #graded 3 or higher, at least 30 obs, taxonomic constraints, constraints on repeating zeros
 #at least 5 unique values
-#file that was posted
-#    gpdd_st=read.csv("Data/Raw TimeSeries Data.csv")
 
 # Processing ####
-#list of IDs, life history, and output of gpdd ts used (from Clark Luis 2019)
-gpdd_lifehistory=read.csv("Data/lifehistory_output.csv")
+#life history info
+gpdd_lifehistory=read.csv("data/gpdd_lifehistory_all.csv")
 
 #function for longest run of zeros
 zero_run <- function(x){
@@ -43,15 +40,15 @@ gpdd_temp <- gpdd_main %>%
   inner_join(gpdd_data,by="MainID") %>% 
   group_by(MainID) %>%
   filter(SeriesStep!=-9999) %>% 
-  summarize(#sumpop = sum(PopulationUntransformed, na.rm=T),
-    #minpop = min(PopulationUntransformed, na.rm=T), 
-    datasetlength=(max(SeriesStep)-min(SeriesStep)+1),
+  summarize(
+    datasetlength=max((max(SeriesStep)-min(SeriesStep)+1),length(PopulationUntransformed)),
     ndatapoints = length(which(!is.na(PopulationUntransformed))),
     uniquevals = n_distinct(PopulationUntransformed, na.rm = T),
     zerorun = zero_run(.data),
     zeros = length(which(PopulationUntransformed==0)),
     propzeros = zeros/ndatapoints,
-    propnonmissing = ndatapoints/datasetlength) %>% 
+    missingvals = datasetlength-ndatapoints,
+    propmissing = 1-(ndatapoints/datasetlength)) %>% 
   ungroup() 
 
 #join filtering metrics and taxon info to main table
@@ -64,15 +61,14 @@ gpdd_join <- gpdd_main %>%
          -WoldaCode, -Authority, - Notes.y)
 
 #filter time series
-#549
 gpdd_filter <- gpdd_join %>%
-  filter(Reliability>=2) %>%  #alternatively 3 (517)
+  filter(Reliability>=2) %>%  
   filter(ndatapoints>=30) %>% 
-  filter(uniquevals>=5) %>% #alternatively 15
+  filter(uniquevals>=5) %>% 
   filter(SamplingProtocol!="Harvest") %>% 
   filter(propzeros<0.6) %>% 
+  filter(propmissing<=0.22) %>% #missing data filter
   droplevels()
-#minpop and sumpop exclusions drop out after this filtering
 
 #filter data, join timeperiod info, nest by MainID
 gpdd_d_nest <- gpdd_data %>% 
@@ -81,6 +77,9 @@ gpdd_d_nest <- gpdd_data %>%
   droplevels() %>% 
   group_by(MainID) %>%
   nest()
+
+#fix error in ts 9833
+gpdd_d_nest[gpdd_d_nest$MainID==9833,]$data[[1]]$SeriesStep[94]<-93
 
 #calculate unique time period IDs
 gpdd_d_nest$unTimePeriodID=map_dbl(gpdd_d_nest$data, ~ n_distinct(.x$TimePeriod)) 
@@ -104,58 +103,39 @@ sampling_interval=function(unTimePeriodID, data) {
 }
 gpdd_d_nest$SamplingInterval=map2_chr(gpdd_d_nest$unTimePeriodID, gpdd_d_nest$data, sampling_interval) 
 
-#timescale of observations
-gpdd_d$timescale_MinAge=ifelse(gpdd_d$SamplingInterval=="annual", gpdd_d$datasetlength/(gpdd_d$MinAge/12),
-                               ifelse(gpdd_d$SamplingInterval=="seasonal", gpdd_d$datasetlength/(gpdd_d$MinAge/6),
-                                      ifelse(gpdd_d$SamplingInterval=="bimonthly", gpdd_d$datasetlength/(gpdd_d$MinAge/2),
-                                             ifelse(gpdd_d$SamplingInterval=="monthly", gpdd_d$datasetlength/(gpdd_d$MinAge),
-                                                    ifelse(gpdd_d$SamplingInterval=="4-week", gpdd_d$datasetlength/(gpdd_d$MinAge*1.07),
-                                                           ifelse(gpdd_d$SamplingInterval=="weekly", gpdd_d$datasetlength/(gpdd_d$MinAge*4.286),NA))))))
-gpdd_d$timescale_Lifespan=ifelse(gpdd_d$SamplingInterval=="annual", gpdd_d$datasetlength/(gpdd_d$Lifespan/12),
-                                 ifelse(gpdd_d$SamplingInterval=="seasonal", gpdd_d$datasetlength/(gpdd_d$Lifespan/6),
-                                        ifelse(gpdd_d$SamplingInterval=="bimonthly", gpdd_d$datasetlength/(gpdd_d$Lifespan/2),
-                                               ifelse(gpdd_d$SamplingInterval=="monthly", gpdd_d$datasetlength/(gpdd_d$Lifespan),
-                                                      ifelse(gpdd_d$SamplingInterval=="4-week", gpdd_d$datasetlength/(gpdd_d$Lifespan*1.07),
-                                                             ifelse(gpdd_d$SamplingInterval=="weekly", gpdd_d$datasetlength/(gpdd_d$Lifespan*4.286),NA))))))
+#select focal taxon classes
+focal_taxa=c("Aves","Osteichthyes", "Mammalia", "Bacillariophyceae", "Insecta")
 
-#join nested data, location info, life history info to filtered main table
-#remove daily dataset
-#compute timescale metrics
-#subset/reorder columns
+#function for timescale ratios
+timescale_ratio=function(SamplingInterval, num, den_mo) {
+  ifelse(SamplingInterval=="annual", num/(den_mo/12),
+         ifelse(SamplingInterval=="seasonal", num/(den_mo/6),
+                ifelse(SamplingInterval=="bimonthly", num/(den_mo/2),
+                       ifelse(SamplingInterval=="monthly", num/(den_mo),
+                              ifelse(SamplingInterval=="4-week", num/(den_mo*1.07),
+                                     ifelse(SamplingInterval=="weekly", num/(den_mo*4.286),NA))))))
+  
+}
+
 #PRIMARY NESTED TABLE
 gpdd_d <- gpdd_filter %>%
+  #join nested data, location info, life history info to filtered main table
   left_join(gpdd_d_nest,by="MainID") %>% 
-  left_join(select(gpdd_lifehistory, MainID, Mass:TrL),by="MainID") %>% 
+  left_join(select(gpdd_lifehistory, MainID, Mass_g:TrL),by="MainID") %>% 
   left_join(select(gpdd_location, LocationID, ExactName, Country, Continent, LongDD, LatDD, SpatialAccuracy, LocationExtent),by="LocationID") %>% 
-  mutate(timescale_MinAge=ifelse(SamplingInterval=="annual", datasetlength/(MinAge/12),
-                                 ifelse(SamplingInterval=="seasonal", datasetlength/(MinAge/6),
-                                        ifelse(SamplingInterval=="bimonthly", datasetlength/(MinAge/2),
-                                               ifelse(SamplingInterval=="monthly", datasetlength/(MinAge),
-                                                      ifelse(SamplingInterval=="4-week", datasetlength/(MinAge*1.07),
-                                                             ifelse(SamplingInterval=="weekly", datasetlength/(MinAge*4.286),NA)))))),
-         timescale_Lifespan=ifelse(SamplingInterval=="annual", datasetlength/(Lifespan/12),
-                                   ifelse(SamplingInterval=="seasonal", datasetlength/(Lifespan/6),
-                                          ifelse(SamplingInterval=="bimonthly", datasetlength/(Lifespan/2),
-                                                 ifelse(SamplingInterval=="monthly", datasetlength/(Lifespan),
-                                                        ifelse(SamplingInterval=="4-week", datasetlength/(Lifespan*1.07),
-                                                               ifelse(SamplingInterval=="weekly", datasetlength/(Lifespan*4.286),NA)))))),
-         timestep_MinAge=ifelse(SamplingInterval=="annual", 1/(MinAge/12),
-                                 ifelse(SamplingInterval=="seasonal", 1/(MinAge/6),
-                                        ifelse(SamplingInterval=="bimonthly", 1/(MinAge/2),
-                                               ifelse(SamplingInterval=="monthly", 1/(MinAge),
-                                                      ifelse(SamplingInterval=="4-week", 1/(MinAge*1.07),
-                                                             ifelse(SamplingInterval=="weekly", 1/(MinAge*4.286),NA)))))),
-         timestep_Lifespan=ifelse(SamplingInterval=="annual", 1/(Lifespan/12),
-                                   ifelse(SamplingInterval=="seasonal", 1/(Lifespan/6),
-                                          ifelse(SamplingInterval=="bimonthly", 1/(Lifespan/2),
-                                                 ifelse(SamplingInterval=="monthly", 1/(Lifespan),
-                                                        ifelse(SamplingInterval=="4-week", 1/(Lifespan*1.07),
-                                                               ifelse(SamplingInterval=="weekly", 1/(Lifespan*4.286),NA))))))
-  ) %>% 
+  #relabel taxon classes
+  #compute timescale metrics
+  mutate(TaxonomicClass2=ifelse(TaxonomicClass %in% focal_taxa, as.character(TaxonomicClass), "Other"),
+         timescale_MinAge=timescale_ratio(SamplingInterval, datasetlength, MinAge_mo),
+         timescale_Lifespan=timescale_ratio(SamplingInterval, datasetlength, Lifespan_mo),
+         timestep_MinAge=timescale_ratio(SamplingInterval, 1, MinAge_mo),
+         timestep_Lifespan=timescale_ratio(SamplingInterval, 1, Lifespan_mo)) %>% 
+  #subset/reorder columns
   select(MainID:LocationID, TaxonName, CommonName, Reliability, SamplingInterval, 
-         datasetlength:propnonmissing, TaxonomicPhylum:TaxonomicGenus, 
-         TaxonomicLevel, Mass:TrL, timescale_MinAge:timestep_Lifespan, ExactName:LocationExtent, SamplingUnits, SourceTransform, Notes=Notes.x,
+         datasetlength:propnonmissing, TaxonomicPhylum:TaxonomicGenus, TaxonomicClass2, 
+         TaxonomicLevel, Mass_g:TrL, timescale_MinAge:timestep_Lifespan, ExactName:LocationExtent, SamplingUnits, SourceTransform, Notes=Notes.x,
          data) %>% 
+  #remove daily dataset
   filter(SamplingInterval!="daily") %>% 
   droplevels()
 
@@ -171,18 +151,6 @@ filltimepoints=function(data) {
 gpdd_d$data_fill=map(gpdd_d$data, filltimepoints) 
 
 #rescale abundance
-
-#old rescaling function
-# rescale=function(data) {
-#   mind=min(data$PopulationUntransformed, na.rm=T)
-#   maxd=max(data$PopulationUntransformed, na.rm=T)
-#   data$PopRescale=((data$PopulationUntransformed-mind)/(maxd-mind))+1
-#   data$PopRescale_fd=c(NA, diff(data$PopRescale))
-#   data$PopRescale_log=log(data$PopRescale)
-#   data$PopRescale_gr=c(NA, diff(data$PopRescale_log))
-#   return(as.data.frame(data))
-# }
-
 is.wholenumber <- function(x, tol = .Machine$double.eps^0.5)  abs(x - round(x)) < tol
 rescale=function(data, diag=F) {
   mind=min(data$PopulationUntransformed, na.rm=T)
@@ -210,14 +178,23 @@ gpdd_d$data_rescale=map(gpdd_d$data_fill, rescale)
 gpdd_d$data_rescale_case=map_dbl(gpdd_d$data_fill, rescale, diag=T)
 #table(gpdd_d$data_rescalediag)
 
+#test for monotonic trends
+monotonic_eval=function(data) {
+  max(cor(data$SeriesStep, data$PopRescale, use="p")^2, cor(data$SeriesStep, data$PopRescale_log, use="p")^2)
+}
+gpdd_d$monotonicR2=map_dbl(gpdd_d$data_rescale, monotonic_eval)
+#gpdd_d$monotonic=ifelse(gpdd_d$monotonicR2>0.5,"yes","no")
+
 #unnest table
 gpdd_dun = unnest(select(gpdd_d, MainID, CommonName, data_rescale))
 
 #files for export
-write.csv(gpdd_dun, "./Data/gpdd_timeseries.csv", row.names = F)
-write.csv(select(gpdd_d, MainID:Notes, data_rescale_case), "./Data/gpdd_ts_metadata.csv", row.names = F)
+write.csv(gpdd_dun, "./data/gpdd_timeseries.csv", row.names = F)
+write.csv(select(gpdd_d, MainID:Notes, data_rescale_case, monotonicR2), "./data/gpdd_ts_metadata.csv", row.names = F)
 
-save(gpdd_d, file = "./Data/gpdd_d_v2.Rdata")
+save(gpdd_d, file = "./data/gpdd_d.Rdata")
 
-#function for body masses
-cvol=function(mm, ratio=1/3.5){mm/10*pi*(mm/10/2*ratio)^2}
+#update life history 
+gpdd_lh <- gpdd_lifehistory %>% 
+  filter(MainID %in% unique(gpdd_filter$MainID))
+write.csv(gpdd_lh, "./data/gpdd_lifehistory.csv", row.names = F)
