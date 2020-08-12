@@ -21,8 +21,8 @@ library("purrr")
 #at least 5 unique values
 
 # Processing ####
-#life history info
-gpdd_lifehistory=read.csv("data/gpdd_lifehistory_all.csv")
+#life history info (includes just 180 focal series)
+gpdd_lifehistory=read.csv("data/gpdd_lifehistory.csv")
 
 #function for longest run of zeros
 zero_run <- function(x){
@@ -68,6 +68,9 @@ gpdd_filter <- gpdd_join %>%
   filter(SamplingProtocol!="Harvest") %>% 
   filter(propzeros<0.6) %>% 
   filter(propmissing<=0.22) %>% #missing data filter
+  filter(MainID!=2774) %>% #exclude shorter of duplicate series
+  filter(MainID!=1870) %>% #exclude shorter of duplicate series
+  filter(MainID!=9308) %>% #exclude lower quality of duplicate series
   droplevels()
 
 #filter data, join timeperiod info, nest by MainID
@@ -132,7 +135,7 @@ gpdd_d <- gpdd_filter %>%
          timestep_Lifespan=timescale_ratio(SamplingInterval, 1, Lifespan_mo)) %>% 
   #subset/reorder columns
   select(MainID:LocationID, TaxonName, CommonName, Reliability, SamplingInterval, 
-         datasetlength:propnonmissing, TaxonomicPhylum:TaxonomicGenus, TaxonomicClass2, 
+         datasetlength:propmissing, TaxonomicPhylum:TaxonomicGenus, TaxonomicClass2, 
          TaxonomicLevel, Mass_g:TrL, timescale_MinAge:timestep_Lifespan, ExactName:LocationExtent, SamplingUnits, SourceTransform, Notes=Notes.x,
          data) %>% 
   #remove daily dataset
@@ -192,9 +195,10 @@ gpdd_dun = unnest(select(gpdd_d, MainID, CommonName, data_rescale))
 write.csv(gpdd_dun, "./data/gpdd_timeseries.csv", row.names = F)
 write.csv(select(gpdd_d, MainID:Notes, data_rescale_case, monotonicR2), "./data/gpdd_ts_metadata.csv", row.names = F)
 
+#save nested table for analysis
 save(gpdd_d, file = "./data/gpdd_d.Rdata")
 
-#update life history 
-gpdd_lh <- gpdd_lifehistory %>% 
-  filter(MainID %in% unique(gpdd_filter$MainID))
-write.csv(gpdd_lh, "./data/gpdd_lifehistory.csv", row.names = F)
+# #update life history 
+# gpdd_lh <- gpdd_lifehistory %>% 
+#   filter(MainID %in% unique(gpdd_filter$MainID))
+# write.csv(gpdd_lh, "./data/gpdd_lifehistory.csv", row.names = F)

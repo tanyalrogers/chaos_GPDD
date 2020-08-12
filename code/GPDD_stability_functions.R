@@ -9,15 +9,19 @@ getR2=function(resultsdf, obse="obs", prede="pred") {
 }
 
 #predictors same as response variable
-smap_model=function(data, y, ylog) {
+smap_model=function(data, y, ylog, Efix=NULL) {
   ser=data[,y]
   #set max E based on effective ts length (longest string of non-NA values)
   len=rle(!is.na(ser))
   serlen=max(len$lengths[len$values==TRUE])
   Emax=min(10,round(sqrt(serlen),0))
-  #get best E using simplex
-  simplex_results=simplex(ser, tau=1, tp=1, E=1:Emax, silent = T)
-  bestE=simplex_results$E[which.min(simplex_results$rmse)]
+  if(!is.null(Efix)) {
+    bestE=Efix #set E to fixed value
+  } else {
+    #get best E using simplex
+    simplex_results=simplex(ser, tau=1, tp=1, E=1:Emax, silent = T)
+    bestE=simplex_results$E[which.min(simplex_results$rmse)]
+  }
   #get best theta
   smap_results=s_map(ser, tau=1, tp=1, E=bestE, silent = T)
   bestTheta=smap_results$theta[which.min(smap_results$rmse)]
@@ -47,7 +51,7 @@ smap_model=function(data, y, ylog) {
 }
 
 #growth rate or first diff as response variable
-smap_model_gr_fd=function(data, gr=NULL, fd=NULL, y, ylog) {
+smap_model_gr_fd=function(data, gr=NULL, fd=NULL, y, ylog, Efix=NULL) {
   #supply either gr (growth rate) or fd (first difference)
   #if fd, must use ylog=F
   ser=data[,y]
@@ -60,15 +64,20 @@ smap_model_gr_fd=function(data, gr=NULL, fd=NULL, y, ylog) {
   #generate lags
   ser_lags=make_block(ser, max_lag = Emax+1, tau=1)[,-1]
   ser_lags=cbind(ser_lags, pgr)
-  #get best E using simplex
-  simplex_results=numeric(length = Emax)
-  for(i in 1:Emax) {
-    simplex_results[i]=block_lnlp(ser_lags, tp = 0, method = "simplex", 
-                                  columns = paste0("col1_",1:i), 
-                                  target_column = "pgr", 
-                                  first_column_time = F, silent = T)$rmse
+  if(!is.null(Efix)) {
+    bestE=Efix #set E to fixed value
+  } else {
+    #get best E using simplex
+    simplex_results=numeric(length = Emax)
+    for(i in 1:Emax) {
+      simplex_results[i]=block_lnlp(ser_lags, tp = 0, method = "simplex", 
+                                    columns = paste0("col1_",1:i), 
+                                    target_column = "pgr", 
+                                    first_column_time = F, silent = T)$rmse
+    }
+    bestE=which.min(simplex_results)
   }
-  bestE=which.min(simplex_results)
+
   #get best theta
   thetatest = c(0, 1e-04, 3e-04, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8)
   smap_results=block_lnlp(ser_lags, tp = 0, method = "s-map", 
@@ -100,6 +109,26 @@ smap_model_gr_fd=function(data, gr=NULL, fd=NULL, y, ylog) {
   modelstats=data.frame(E=bestE, Emax=Emax, theta=bestTheta, num_pred=smap_results$num_pred,
                         R2model=modelR2, R2abund=modelR2_abund, rho=smap_results$rho)
   return(list(modelstats=modelstats, resultsdf=resultsdf, form=form))
+}
+
+#select among multiple models
+smap_model_options=function(data, model, Efix=NULL) {
+  if(model==1) {
+    modelresults=smap_model(data, y="PopRescale", ylog=F, Efix=Efix)
+  }
+  if(model==2) {
+    modelresults=smap_model(data, y="PopRescale_log", ylog=T, Efix=Efix)
+  }
+  if(model==3) {
+    modelresults=smap_model_gr_fd(data, fd="PopRescale_fd", y="PopRescale", ylog=F, Efix=Efix)
+  }
+  if(model==4) {
+    modelresults=smap_model_gr_fd(data, fd="PopRescale_gr", y="PopRescale", ylog=F, Efix=Efix)
+  }
+  if(model==5) {
+    modelresults=smap_model_gr_fd(data, fd="PopRescale_gr", y="PopRescale_log", ylog=T, Efix=Efix)
+  }
+  return(modelresults)
 }
 
 #construct Jacobians
@@ -228,11 +257,14 @@ getStability=function(jacobians) {
   #proportion positive
   lle_pp=length(which(lle>0))/length(which(!is.na(lle)))
   
+  #naive avg of local LEs
+  lle_avg=mean(lle, na.rm=T)
+  
   #global le
   runlen=rle(!is.na(jacobians[1,1,]))
   serlen=max(runlen$lengths[runlen$values==TRUE])
   if(serlen<(len/2)) {
-    #do not compute the longest run of non-missing values is less than half ts length
+    #do not compute if the longest run of non-missing values is less than half ts length
     gle=NA 
   } else {
     if(ndim==1) {
@@ -260,47 +292,69 @@ getStability=function(jacobians) {
     }
   }
   
-  #naive avg of local LEs
-  if(length(which(!is.na(lle)))/length(lle)<0.6) {
-    lle_avg=NA
-  } else {
-    lle_avg=mean(lle, na.rm=T)   
-  }
-  
   return(list(lle=lle, lle_pp=lle_pp, lle_avg=lle_avg, gle=gle))
 }
 
+#1d LE from best model
+LE1d=function(data, bestmodel) {
+  modelresults=smap_model_options(data, bestmodel, Efix=1)
+  jacobians=getJacobians(modelresults)
+  stability=getStability(jacobians)
+  return(stability)
+}
+
 # Regression-based LE (Rosenstein method)
-regLE=function(y, E) {
-  xi=make_block(y, max_lag = E, tau=1)[-(1:(E-1)),-1] #generate E lags
-  ni=nrow(xi)
+regLE=function(data, y) {
+  #recompute bestE with simplex
+  ser=data[,y]
+  len=rle(!is.na(ser))
+  serlen=max(len$lengths[len$values==TRUE])
+  Emax=min(10,round(sqrt(serlen),0))
+  simplex_results=simplex(ser, tau=1, tp=1, E=1:Emax, silent = T)
+  bestE=simplex_results$E[which.min(simplex_results$rmse)]
+  
+  xi=make_block(ser, max_lag = bestE, tau=1)[-(1:(bestE-1)),-1] #generate E lags
+  if(bestE==1) {ni=length(xi)} else {ni=nrow(xi)}
   navals=which(!complete.cases(xi))
   rownames(xi)=NULL
-  xi[navals,]=NA
-  distij=as.matrix(dist(xi))+10000*diag(ni) #distance matrix
+  if(bestE==1) {xi[navals]=NA} else {xi[navals,]=NA}
+  
+  
+  #distij=as.matrix(dist(xi))+10000*diag(ni) 
+  distij=as.matrix(dist(xi)) #distance matrix
+  exclusion=1 #exclusion radius
+  delta <- row(distij) - col(distij)
+  distij[delta <= exclusion & delta >= -1*exclusion] <- distij[delta <= exclusion & delta >= -1*exclusion]+10000
+  
   md=apply(distij,1,min,na.rm=T) #min distance vector
   md[navals]=NA
   minind=apply(distij,1,which.min) #nearest point index vector
   minind[navals]=NA
   smax=4 #max steps into future
   avg_dist=numeric(smax+1)
-  avg_dist[1]=mean(log(md), na.rm=T) #might have distances of zero and fail here
+  md[md==0]<-NA #remove distances of 0 (otherwise fails when taking logs)
+  avg_dist[1]=mean(log(md), na.rm=T) 
   for(s in 1:smax) {
     ind1=(1:ni)+s
     ind2=minind+s
     rows=which(ind1<=ni & ind2<=ni)
-    ds=sqrt(rowSums((xi[ind1[rows],]-xi[ind2[rows],])^2))
+    if(bestE==1){
+      ds=abs(xi[ind1[rows]]-xi[ind2[rows]])
+    } else {
+      ds=sqrt(rowSums((xi[ind1[rows],]-xi[ind2[rows],])^2))
+    }
+    ds[ds==0]<-NA #remove distances of 0 (otherwise fails when taking logs)
     avg_dist[s+1]=mean(log(ds), na.rm=T)
   }
   
+  #regression
   xr=matrix(ncol=2, nrow=smax+1, data = c(rep(1,smax+1), 0:smax))
   bb=solve(t(xr)%*%xr)%*%t(xr)%*%avg_dist
   verr=t(avg_dist-xr%*%bb)%*%(avg_dist-xr%*%bb)/(smax-1)
   vcoef=verr[1,1]*solve(t(xr)%*%xr)
-  
   # reg=lm(avg_dist~c(0:smax))
   # summary(reg)
-  #plot(0:smax, avg_dist)
+  # plot(0:smax, avg_dist)
   
   LEreg=bb[2]
   LEreg_se=sqrt(vcoef[2,2])
