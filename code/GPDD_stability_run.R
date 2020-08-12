@@ -82,6 +82,7 @@ gpdd_d$lle_pp3=map_dbl(gpdd_results$stability3, ~.x$lle_pp)
 gpdd_d$lle_pp4=map_dbl(gpdd_results$stability4, ~.x$lle_pp)
 gpdd_d$lle_pp5=map_dbl(gpdd_results$stability5, ~.x$lle_pp)
 
+#best stability estimates
 gpdd_d$glebest=apply(gpdd_d, 1, FUN=function(x) {unlist(x[paste0("gle",x$bestmodel)])})
 gpdd_d$lle_avgbest= apply(gpdd_d, 1, FUN=function(x) {unlist(x[paste0("lle_avg",x$bestmodel)])})
 gpdd_d$lle_ppbest= apply(gpdd_d, 1, FUN=function(x) {unlist(x[paste0("lle_pp",x$bestmodel)])})
@@ -89,6 +90,10 @@ gpdd_d$glesign=ifelse(gpdd_d$glebest>0, "positive", "negative")
 gpdd_d$lle_avgsign=ifelse(gpdd_d$lle_avgbest>0, "positive", "negative")
 gpdd_d$Ebest=map_dbl(gpdd_results$modelresultsbest, ~.x$modelstats$E)
 gpdd_d$thetabest=map_dbl(gpdd_results$modelresultsbest, ~.x$modelstats$theta)
+
+#convert to common timescale
+gpdd_d$gle_mo=gpdd_d$glebest/timescale_mo(gpdd_d$SamplingInterval, 1)
+gpdd_d$gle_gen=gpdd_d$gle_mo*gpdd_d$MinAge_mo
 
 #regression method
 gpdd_results$regLE=map(gpdd_d$data_rescale, regLE, y="PopRescale")
@@ -99,6 +104,8 @@ gpdd_d$LEreg_se=map_dbl(gpdd_results$regLE, ~.x$LEreg_se)
 gpdd_results$LE1d=map2(gpdd_d$data_rescale, gpdd_d$bestmodel, LE1d)
 gpdd_d$glebest1d=map_dbl(gpdd_results$LE1d, ~.x$gle)
 gpdd_d$glesign1d=ifelse(gpdd_d$glebest1d>0, "positive", "negative")
+gpdd_d$gle1d_mo=gpdd_d$glebest1d/timescale_mo(gpdd_d$SamplingInterval, 1)
+gpdd_d$gle1d_gen=gpdd_d$gle1d_mo*gpdd_d$MinAge_mo
 
 #prediction slope for best model
 

@@ -263,8 +263,8 @@ getStability=function(jacobians) {
   #global le
   runlen=rle(!is.na(jacobians[1,1,]))
   serlen=max(runlen$lengths[runlen$values==TRUE])
-  if(serlen<(len/2)) {
-    #do not compute if the longest run of non-missing values is less than half ts length
+  if(serlen<(len/2.5) & serlen<25) {
+    #do not compute if the longest run of non-missing values is less than 40% of ts length or less than 25
     gle=NA 
   } else {
     if(ndim==1) {
@@ -360,4 +360,15 @@ regLE=function(data, y) {
   LEreg_se=sqrt(vcoef[2,2])
   
   return(data.frame(LEreg=LEreg, LEreg_se=LEreg_se))
+}
+
+#converts timesteps to months
+timescale_mo=function(SamplingInterval, y) {
+  ifelse(SamplingInterval=="annual", y*12,
+         ifelse(SamplingInterval=="seasonal", y*6,
+                ifelse(SamplingInterval=="bimonthly", y*2,
+                       ifelse(SamplingInterval=="monthly", y,
+                              ifelse(SamplingInterval=="4-week", y/1.07,
+                                     ifelse(SamplingInterval=="weekly", y/4.286,NA))))))
+  
 }
