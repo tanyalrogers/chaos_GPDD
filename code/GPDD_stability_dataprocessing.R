@@ -183,7 +183,7 @@ gpdd_d$data_rescale_case=map_dbl(gpdd_d$data_fill, rescale, diag=T)
 
 #test for monotonic trends
 monotonic_eval=function(data) {
-  max(cor(data$SeriesStep, data$PopRescale, use="p")^2, cor(data$SeriesStep, data$PopRescale_log, use="p")^2)
+  (cor(data$SeriesStep, data$PopRescale, use="p", method="spearman"))^2
 }
 gpdd_d$monotonicR2=map_dbl(gpdd_d$data_rescale, monotonic_eval)
 #gpdd_d$monotonic=ifelse(gpdd_d$monotonicR2>0.5,"yes","no")

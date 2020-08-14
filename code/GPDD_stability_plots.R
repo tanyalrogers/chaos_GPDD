@@ -71,11 +71,11 @@ ggplot(filter(gpdd_d, Ebest>1), aes(y=glebest1d, x=glebest, color=Ebest)) +
 
 #histogram gle by taxon (predictability)
 ggplot(gpdd_d, aes(x=glebest, fill=TaxonomicClass2)) + 
-  facet_grid(predictable_ag~.) + 
+  #facet_grid(predictable_ag~.) + 
   geom_histogram(boundary = 0, binwidth = 0.1) +
   geom_vline(xintercept = 0) + theme_bw() 
 ggplot(gpdd_d, aes(x=glebest1d, fill=TaxonomicClass2)) + 
-  facet_grid(predictable_ag~.) + 
+  #facet_grid(predictable_ag~.) + 
   geom_histogram(boundary = 0, binwidth = 0.1) +
   geom_vline(xintercept = 0) + theme_bw() 
 ggplot(gpdd_d, aes(x=gle_mo, fill=TaxonomicClass2)) + 
@@ -99,7 +99,11 @@ ggplot(gpdd_d, aes(x=glebest, fill=TaxonomicClass2)) +
 #distribution of Es
 ggplot(gpdd_d, aes(x=factor(Ebest), fill=TaxonomicClass2)) + 
   #facet_grid(predictable_ag~.) + 
-  geom_bar() + xlab("Best E") +
+  geom_bar(position = "stack") + xlab("Best E") +
+  classic
+ggplot(gpdd_d, aes(y=Ebest, x=datasetlength, color=TaxonomicClass2)) + 
+  #facet_grid(predictable_ag~.) + 
+  geom_point() + 
   classic
 
 #gle by E, theta
@@ -117,7 +121,7 @@ ggplot(gpdd_d, aes(y=glebest, x=thetabest, fill=TaxonomicClass2, color=glebest>0
 #gle by latitude
 ggplot(gpdd_d, aes(y=glebest, x=abs(LatDD), fill=TaxonomicClass2, color=glebest>0)) + 
   #facet_grid(predictable_ag~.) + 
-  #facet_wrap(~TaxonomicClass2, nrow=2) +
+  facet_wrap(~TaxonomicClass2, nrow=2) +
   geom_point(size=2, pch=21, stroke=1.5) +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic 
@@ -154,9 +158,14 @@ ggplot(gpdd_d, aes(y=gle_mo, x=log10(Lifespan_mo), fill=TaxonomicClass2, color=g
 #gle by timescale ratio
 #timescale_MinAge = gens/ts length
 #timestep_MinAge = gens/timestep
+ggplot(gpdd_d, aes(y=glebest, x=log10(timestep_MinAge), fill=TaxonomicClass2, color=glebest>0)) + 
+  #facet_grid(predictable_ag~.) + 
+  geom_point(size=2, pch=21, stroke=1.5) + xlab("log10 gens/timestep") +
+  geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
+  classic 
 ggplot(gpdd_d, aes(y=gle_mo, x=log10(timestep_MinAge), fill=TaxonomicClass2, color=glebest>0)) + 
   #facet_grid(predictable_ag~.) + 
-  geom_point(size=2, pch=21, stroke=1.5) +
+  geom_point(size=2, pch=21, stroke=1.5) + xlab("log10 gens/timestep") +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic 
 ggplot(gpdd_d, aes(y=gle_mo, x=log10(timescale_MinAge), fill=TaxonomicClass2, color=glebest>0)) + 
@@ -170,6 +179,18 @@ ggplot(gpdd_d, aes(y=gle_gen, x=log10(timescale_MinAge), fill=TaxonomicClass2, c
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic + 
   ylim(c(-3,3))
+
+#R2 by gen/timestep
+ggplot(gpdd_d, aes(y=R2abundbest, x=log10(timestep_MinAge), fill=TaxonomicClass2, color=glebest>0)) + 
+  #facet_grid(predictable_ag~.) + 
+  geom_point(size=2, pch=21, stroke=1.5) + xlab("log10 gens/timestep") +
+  geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
+  classic 
+ggplot(gpdd_d, aes(y=monotonicR2, x=log10(timestep_MinAge), fill=TaxonomicClass2, color=glebest>0)) + 
+  #facet_grid(predictable_ag~.) + 
+  geom_point(size=2, pch=21, stroke=1.5) + xlab("log10 gens/timestep") +
+  geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
+  classic 
 
 #gens/timespan vs gens/timestep
 ggplot(gpdd_d, aes(y=log10(timescale_MinAge), x=log10(timestep_MinAge), fill=glesign)) + 
@@ -189,7 +210,7 @@ ggplot(gpdd_d, aes(y=glebest, x=monotonicR2, fill=TaxonomicClass2, color=glebest
   geom_point(size=2, pch=21, stroke=1.5) +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic 
-ggplot(gpdd_d, aes(y=gle_mo, x=monotonicR2, fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=gle_mo, x=(monotonicR2)^2, fill=TaxonomicClass2, color=glebest>0)) + 
   #facet_grid(predictable_ag~.) + 
   geom_point(size=2, pch=21, stroke=1.5) +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
@@ -198,14 +219,16 @@ ggplot(gpdd_d, aes(y=gle_mo, x=monotonicR2, fill=TaxonomicClass2, color=glebest>
 #gle vs mass
 ggplot(gpdd_d, aes(y=gle_mo, x=log10(Mass_g), fill=TaxonomicClass2, color=glebest>0)) + 
   #facet_grid(predictable_ag~.) +
+  #facet_grid(TaxonomicClass2~., scales="free_y") +
   geom_point(size=2, pch=21, stroke=1.5) +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic 
 ggplot(gpdd_d, aes(y=gle_gen, x=log10(Mass_g), fill=TaxonomicClass2, color=glebest>0)) + 
   #facet_grid(predictable_ag~.) +
+  facet_grid(TaxonomicClass2~., scales="free_y") +
   geom_point(size=2, pch=21, stroke=1.5) +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
-  classic + ylim(c(-3,3))
+  classic #+ ylim(c(-3,3))
 
 #diagnostics
 
@@ -235,6 +258,13 @@ dupsimp=select(dup, MainID, TaxonID, CommonName, ExactName, Country, SamplingUni
 # write.csv(dupsimp, "./data/duplicatespecies.csv", row.names = F)
 
 missing=filter(gpdd_d, is.na(glebest))
+fish=filter(gpdd_d, TaxonomicClass2=="Osteichthyes")
+diatoms=filter(gpdd_d, TaxonomicClass2=="Bacillariophyceae")
+
+for(i in 1:nrow(diatoms)) {
+  dtemp=diatoms$data_rescale[i][[1]]
+  plot(PopRescale_log~SeriesStep, data=dtemp, type="l", main=paste(i, diatoms$CommonName[i]))
+}
 
 #for plotting 
 for(i in 1:8) {

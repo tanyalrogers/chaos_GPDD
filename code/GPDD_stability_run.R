@@ -90,6 +90,7 @@ gpdd_d$glesign=ifelse(gpdd_d$glebest>0, "positive", "negative")
 gpdd_d$lle_avgsign=ifelse(gpdd_d$lle_avgbest>0, "positive", "negative")
 gpdd_d$Ebest=map_dbl(gpdd_results$modelresultsbest, ~.x$modelstats$E)
 gpdd_d$thetabest=map_dbl(gpdd_results$modelresultsbest, ~.x$modelstats$theta)
+gpdd_d$R2abundbest=map_dbl(gpdd_results$modelresultsbest, ~.x$modelstats$R2abund)
 
 #convert to common timescale
 gpdd_d$gle_mo=gpdd_d$glebest/timescale_mo(gpdd_d$SamplingInterval, 1)

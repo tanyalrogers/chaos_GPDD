@@ -349,6 +349,9 @@ regLE=function(data, y) {
   
   #regression
   xr=matrix(ncol=2, nrow=smax+1, data = c(rep(1,smax+1), 0:smax))
+  # #drop initial distance
+  # xr=matrix(ncol=2, nrow=smax, data = c(rep(1,smax), 1:smax))
+  # avg_dist=avg_dist[2:(smax+1)]
   bb=solve(t(xr)%*%xr)%*%t(xr)%*%avg_dist
   verr=t(avg_dist-xr%*%bb)%*%(avg_dist-xr%*%bb)/(smax-1)
   vcoef=verr[1,1]*solve(t(xr)%*%xr)
