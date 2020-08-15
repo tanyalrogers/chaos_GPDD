@@ -8,6 +8,7 @@ library("rEDM")
 library("purrr")
 
 source("./code/GPDD_stability_functions.R")
+load(file = "./data/sims_results.Rdata")
 
 sims=read.csv("./data/ChaosMetaAnalysisSimulatedData.csv")
 sims_d=select(sims, ID, Model, TimeStep, NoiseLevel, Classification, Sim.1:Sim.10) %>% 
@@ -43,6 +44,20 @@ sims_d$Ebest=map_dbl(sims_results$modelresults1, ~.x$modelstats$E)
 sims_d$thetabest=map_dbl(sims_results$modelresults1, ~.x$modelstats$theta)
 sims_d$R1a=map_dbl(sims_results$modelresults1, ~.x$modelstats$R2abund)
 
+#confidence interval on mean lle
+sims_d$lle_avg=map_dbl(sims_results$stability1, ~.x$lle_avg)
+sims_d$lle_ci90lower=map_dbl(sims_results$stability1, function(x) {
+  std=sd(x$lle, na.rm=T)
+  n=length(which(!is.na(x$lle)))
+  ci=x$lle_avg+std/sqrt(n)*qt(p=0.05, df=n-1)})
+sims_d$lle_ci90upper=map_dbl(sims_results$stability1, function(x) {
+  std=sd(x$lle, na.rm=T)
+  n=length(which(!is.na(x$lle)))
+  ci=x$lle_avg+std/sqrt(n)*qt(p=0.95, df=n-1)})
+sims_d$lle_class=ifelse(sims_d$lle_ci90lower>0, "chaotic", "not chaotic")
+
+
+#
 save(sims_d, sims_results, file = "./data/sims_results.Rdata")
 
 ggplot(sims_d, aes(x=NoiseLevel, y=gle, color=Classification)) +
@@ -84,19 +99,36 @@ ggplot(sims_d, aes(x=gle, color=Classification)) +
 
 
 sims_summary=sims_d %>% select(-data) %>% 
-  group_by(ID,Model,Classification,NoiseLevel,TSlength) %>% 
+  group_by(Classification,NoiseLevel,TSlength) %>% 
   summarize(gle_pp=length(which(gle>0))/length(gle),
             gle_pp.01=length(which(gle>0.01))/length(gle),
             gle_pp.05=length(which(gle>0.05))/length(gle),
-            reg_pp=length(which(LEreg>0))/length(LEreg))
+            reg_pp=length(which(LEreg>0))/length(LEreg),
+            lle_avg_pp=length(which(lle_avg>0))/length(lle_avg),
+            lle_pp=length(which(lle_class=="chaotic"))/length(lle_class))
 
+ggplot(sims_summary, aes(x=Model, y=lle_pp, fill=Classification)) +
+  facet_grid(TSlength~NoiseLevel, scales = "free_y") + 
+  geom_bar(stat = "identity") + theme_bw() + xlabvert
+ggplot(sims_summary, aes(x=Model, y=lle_avg_pp, fill=Classification)) +
+  facet_grid(TSlength~NoiseLevel, scales = "free_y") + 
+  geom_bar(stat = "identity") + theme_bw() + xlabvert
 ggplot(sims_summary, aes(x=Model, y=gle_pp, fill=Classification)) +
   facet_grid(TSlength~NoiseLevel, scales = "free_y") + 
   geom_bar(stat = "identity") + theme_bw() + xlabvert
 ggplot(sims_summary, aes(x=Model, y=gle_pp.05, fill=Classification)) +
   facet_grid(TSlength~NoiseLevel, scales = "free_y") + 
   geom_bar(stat = "identity") + theme_bw() + xlabvert
-
 ggplot(sims_summary, aes(x=Model, y=reg_pp, fill=Classification)) +
   facet_grid(TSlength~NoiseLevel, scales = "free_y") + geom_hline(yintercept = 0) +
   geom_bar(position = position_dodge2(), stat = "identity") + theme_bw() + xlabvert
+
+ggplot(sims_summary, aes(x=NoiseLevel, y=gle_pp, fill=Classification)) +
+  facet_grid(TSlength~Classification) + 
+  geom_bar(stat = "identity", position = position_dodge2(), show.legend = F) + theme_bw() + xlabvert
+ggplot(sims_summary, aes(x=NoiseLevel, y=lle_pp, fill=Classification)) +
+  facet_grid(TSlength~Classification) + 
+  geom_bar(stat = "identity", position = position_dodge2(), show.legend = F) + theme_bw() + xlabvert
+ggplot(sims_summary, aes(x=NoiseLevel, y=lle_avg_pp, fill=Classification)) +
+  facet_grid(TSlength~Classification) + 
+  geom_bar(stat = "identity", position = position_dodge2(), show.legend = F) + theme_bw() + xlabvert

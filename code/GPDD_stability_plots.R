@@ -32,6 +32,7 @@ length(which(gpdd_d$lle_ppbest>0.5))/length(which(!is.na(gpdd_d$lle_ppbest)))
 
 #gles are correlated, although some outliers
 pairs(select(gpdd_d, gle1:gle5, glebest))
+pairs(select(gpdd_d, MinAge_mo, Lifespan_mo, timescale_MinAge, timescale_Lifespan, timestep_MinAge, timestep_Lifespan))
 
 #gle is never higher than lle_avg
 plot(lle_avgbest~glebest, data=gpdd_d, xlim=c(-1,1), ylim=c(-1,1))
@@ -107,31 +108,31 @@ ggplot(gpdd_d, aes(y=Ebest, x=datasetlength, color=TaxonomicClass2)) +
   classic
 
 #gle by E, theta
-ggplot(gpdd_d, aes(y=glebest, x=factor(Ebest), fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=glebest, x=factor(Ebest), fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) + 
   geom_point(size=2, pch=21, stroke=1.5) + xlab("Best E") +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic 
-ggplot(gpdd_d, aes(y=glebest, x=thetabest, fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=glebest, x=thetabest, fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) + 
   geom_point(size=2, pch=21, stroke=1.5) +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic 
 
 #gle by latitude
-ggplot(gpdd_d, aes(y=glebest, x=abs(LatDD), fill=TaxonomicClass2, color=glebest>0)) + 
-  #facet_grid(predictable_ag~.) + 
-  facet_wrap(~TaxonomicClass2, nrow=2) +
-  geom_point(size=2, pch=21, stroke=1.5) +
-  geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
-  classic 
-ggplot(gpdd_d, aes(y=gle_mo, x=abs(LatDD), fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=glebest, x=abs(LatDD), fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) + 
   #facet_wrap(~TaxonomicClass2, nrow=2) +
   geom_point(size=2, pch=21, stroke=1.5) +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic 
-ggplot(gpdd_d, aes(y=gle_gen, x=abs(LatDD), fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=gle_mo, x=abs(LatDD), fill=TaxonomicClass2, color=glesign)) + 
+  #facet_grid(predictable_ag~.) + 
+  #facet_wrap(~TaxonomicClass2, nrow=2) +
+  geom_point(size=2, pch=21, stroke=1.5) +
+  geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
+  classic 
+ggplot(gpdd_d, aes(y=gle_gen, x=abs(LatDD), fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) + 
   #facet_wrap(~TaxonomicClass2, nrow=2) +
   geom_point(size=2, pch=21, stroke=1.5) +
@@ -139,17 +140,17 @@ ggplot(gpdd_d, aes(y=gle_gen, x=abs(LatDD), fill=TaxonomicClass2, color=glebest>
   classic + ylim(c(-3,3))
 
 #gle by intrinsic timescale
-ggplot(gpdd_d, aes(y=gle_mo, x=log10(MinAge_mo), fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=gle_mo, x=log10(MinAge_mo), fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) + 
   geom_point(size=2, pch=21, stroke=1.5) +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic 
-ggplot(gpdd_d, aes(y=gle_gen, x=log10(MinAge_mo), fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=gle_gen, x=log10(MinAge_mo), fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) + 
   geom_point(size=2, pch=21, stroke=1.5) +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic + ylim(c(-3,3))
-ggplot(gpdd_d, aes(y=gle_mo, x=log10(Lifespan_mo), fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=gle_mo, x=log10(Lifespan_mo), fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) + 
   geom_point(size=2, pch=21, stroke=1.5) +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
@@ -158,22 +159,27 @@ ggplot(gpdd_d, aes(y=gle_mo, x=log10(Lifespan_mo), fill=TaxonomicClass2, color=g
 #gle by timescale ratio
 #timescale_MinAge = gens/ts length
 #timestep_MinAge = gens/timestep
-ggplot(gpdd_d, aes(y=glebest, x=log10(timestep_MinAge), fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=glebest, x=log10(timestep_MinAge), fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) + 
   geom_point(size=2, pch=21, stroke=1.5) + xlab("log10 gens/timestep") +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic 
-ggplot(gpdd_d, aes(y=gle_mo, x=log10(timestep_MinAge), fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=gle_mo, x=log10(timestep_MinAge), fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) + 
   geom_point(size=2, pch=21, stroke=1.5) + xlab("log10 gens/timestep") +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic 
-ggplot(gpdd_d, aes(y=gle_mo, x=log10(timescale_MinAge), fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=gle_gen, x=log10(timestep_MinAge), fill=TaxonomicClass2, color=glesign)) + 
+  #facet_grid(predictable_ag~.) + 
+  geom_point(size=2, pch=21, stroke=1.5) + xlab("log10 gens/timestep") +
+  geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
+  classic + ylim(c(-3,3))
+ggplot(gpdd_d, aes(y=gle_mo, x=log10(timescale_MinAge), fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) +
   geom_point(size=2, pch=21, stroke=1.5) +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic 
-ggplot(gpdd_d, aes(y=gle_gen, x=log10(timescale_MinAge), fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=gle_gen, x=log10(timescale_MinAge), fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) +
   geom_point(size=2, pch=21, stroke=1.5) +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
@@ -181,12 +187,12 @@ ggplot(gpdd_d, aes(y=gle_gen, x=log10(timescale_MinAge), fill=TaxonomicClass2, c
   ylim(c(-3,3))
 
 #R2 by gen/timestep
-ggplot(gpdd_d, aes(y=R2abundbest, x=log10(timestep_MinAge), fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=R2abundbest, x=log10(timestep_MinAge), fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) + 
   geom_point(size=2, pch=21, stroke=1.5) + xlab("log10 gens/timestep") +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic 
-ggplot(gpdd_d, aes(y=monotonicR2, x=log10(timestep_MinAge), fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=monotonicR2, x=log10(timestep_MinAge), fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) + 
   geom_point(size=2, pch=21, stroke=1.5) + xlab("log10 gens/timestep") +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
@@ -205,12 +211,12 @@ ggplot(gpdd_d, aes(y=log10(timescale_Lifespan), x=log10(timestep_Lifespan), fill
   classic 
 
 #gle vs monotonic trend
-ggplot(gpdd_d, aes(y=glebest, x=monotonicR2, fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=glebest, x=monotonicR2, fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) + 
   geom_point(size=2, pch=21, stroke=1.5) +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
   classic 
-ggplot(gpdd_d, aes(y=gle_mo, x=(monotonicR2)^2, fill=TaxonomicClass2, color=glebest>0)) + 
+ggplot(gpdd_d, aes(y=gle_mo, x=monotonicR2, fill=TaxonomicClass2, color=glesign)) + 
   #facet_grid(predictable_ag~.) + 
   geom_point(size=2, pch=21, stroke=1.5) +
   geom_hline(yintercept = 0) + scale_color_manual(values=c("black", "red", NA)) +
