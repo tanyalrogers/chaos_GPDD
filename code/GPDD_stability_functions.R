@@ -8,125 +8,139 @@ getR2=function(resultsdf, obse="obs", prede="pred") {
   R2=1-sum((d[,obse]-d[,prede])^2)/sum((d[,obse]-mean(d[,obse]))^2)
 }
 
-#predictors same as response variable
-smap_model=function(data, y, ylog, Efix=NULL) {
-  ser=data[,y]
-  #set max E based on effective ts length (longest string of non-NA values)
-  len=rle(!is.na(ser))
-  serlen=max(len$lengths[len$values==TRUE])
-  Emax=min(10,round(sqrt(serlen),0))
-  if(!is.null(Efix)) {
-    bestE=Efix #set E to fixed value
+besthyper=function(data=NULL, y, pgr=NULL, Efix=NULL, taufix=NULL) { 
+  #get best E, tau, theta
+  #y is the time series
+  #if providing dataframe containing y, give y as character (column name)
+  if(!is.null(data)) {
+    ser=data[,y]
   } else {
-    #get best E using simplex
-    simplex_results=simplex(ser, tau=1, tp=1, E=1:Emax, silent = T)
-    bestE=simplex_results$E[which.min(simplex_results$rmse)]
+    ser=y
   }
-  #get best theta
-  smap_results=s_map(ser, tau=1, tp=1, E=bestE, silent = T)
-  bestTheta=smap_results$theta[which.min(smap_results$rmse)]
-  #store smap output
-  smap_results=s_map(ser, tau=1, tp=1, E=bestE, theta=bestTheta, 
-                     stats_only = F, save_smap_coefficients = T, silent = T)
-  resultsdf=cbind(smap_results$model_output[[1]], smap_results$smap_coefficients[[1]])
-  #shift df forward so will fit timepoint 1
-  resultsdf[2:nrow(resultsdf),]=resultsdf[1:(nrow(resultsdf)-1),]
-  resultsdf[1,]=NA
-  resultsdf[1,1]=1
-  #get true loo R2
-  modelR2=getR2(resultsdf)
-  if(ylog==T) {
-    resultsdf$Obs_abund=exp(ser) #exp(resultsdf$obs)
-    resultsdf$Pred_abund=exp(resultsdf$pred)
-    modelR2_abund=getR2(resultsdf, obse="Obs_abund", prede="Pred_abund")
-    form="log-log"
-  }
-  if(ylog==F) {
-    modelR2_abund=modelR2
-    form="ut-ut"
-  }
-  modelstats=data.frame(E=bestE, Emax=Emax, theta=bestTheta, num_pred=smap_results$num_pred,
-                        R2model=modelR2, R2abund=modelR2_abund, rho=smap_results$rho)
-  return(list(modelstats=modelstats, resultsdf=resultsdf, form=form))
-}
-
-#growth rate or first diff as response variable
-smap_model_gr_fd=function(data, gr=NULL, fd=NULL, y, ylog, Efix=NULL) {
-  #supply either gr (growth rate) or fd (first difference)
-  #if fd, must use ylog=F
-  ser=data[,y]
-  if(!is.null(gr)) pgr=data[,gr]
-  if(!is.null(fd)) pgr=data[,fd]
   #set max E based on effective ts length (longest string of non-NA values)
   len=rle(!is.na(ser))
   serlen=max(len$lengths[len$values==TRUE])
-  Emax=min(10,round(sqrt(serlen),0))
+  #Emax=min(12,round(sqrt(serlen),0))
+  Emax=min(12,floor(sqrt(serlen))) #round down
+  
+  if(!is.null(taufix)) {
+    tautry=taufix #set tau to fixed value
+  } else {
+    tautry=1:Emax
+  }
+  if(!is.null(Efix)) {
+    Etry=Efix #set E to fixed value
+  } else {
+    Etry=1:Emax
+  }
+  simplex_results=expand.grid(Etry, tautry)
+  colnames(simplex_results)=c("E","tau")
+  simplex_results=filter(simplex_results, E*tau<=Emax)
+  simplex_results$rmse=NA
+  simplex_results$npred=NA
+  
   #generate lags
   ser_lags=make_block(ser, max_lag = Emax+1, tau=1)[,-1]
-  ser_lags=cbind(ser_lags, pgr)
-  if(!is.null(Efix)) {
-    bestE=Efix #set E to fixed value
-  } else {
-    #get best E using simplex
-    simplex_results=numeric(length = Emax)
-    for(i in 1:Emax) {
-      simplex_results[i]=block_lnlp(ser_lags, tp = 0, method = "simplex", 
-                                    columns = paste0("col1_",1:i), 
-                                    target_column = "pgr", 
-                                    first_column_time = F, silent = T)$rmse
-    }
-    bestE=which.min(simplex_results)
+  #if using growth rate as response, substitute it
+  if(!is.null(pgr)) {
+    ser_lags$col1=pgr
   }
-
+  #ser_lags=na.omit(ser_lags) #standardize targets
+  #get best E and tau using simplex
+  for(i in 1:nrow(simplex_results)) {
+    simptemp=block_lnlp(ser_lags, tp = 0, method = "simplex", 
+                        columns = paste0("col1_",simplex_results$tau[i]*(1:simplex_results$E[i])), 
+                        target_column = "col1",
+                        first_column_time = F, silent = T, stats_only = F)
+    simplex_results$rmse[i]=simptemp$rmse
+    simplex_results$npred[i]=simptemp$num_pred
+  }
+  simplex_results$error=with(simplex_results, ifelse(npred-E^2<0, NA, npred*rmse^2/(npred-E^2)))
+  bestE=simplex_results$E[which.min(simplex_results$error)]
+  bestTau=simplex_results$tau[which.min(simplex_results$error)]
   #get best theta
   thetatest = c(0, 1e-04, 3e-04, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8)
+  ser_lags=make_block(ser, max_lag = bestE+1, tau=bestTau)[,-1]
+  if(!is.null(pgr)) {
+    ser_lags$col1=pgr
+  }
   smap_results=block_lnlp(ser_lags, tp = 0, method = "s-map", 
-                          columns = paste0("col1_",1:bestE), 
-                          target_column = "pgr", theta=thetatest,
+                          columns = paste0("col1_",bestTau*(1:bestE)),
+                          target_column = "col1", theta=thetatest,
                           first_column_time = F, silent = T)
   bestTheta=smap_results$theta[which.min(smap_results$rmse)]
+  
+  return(data.frame(bestE=bestE, bestTau=bestTau, bestTheta=bestTheta, Emax=Emax))
+}
+
+smap_model=function(data, y, ylog, gr=NULL, fd=NULL, Efix=NULL, taufix=NULL) {
+  #can supply either gr (growth rate) or fd (first difference) or none
+  #ylog indicates whether y is log transformed
+  #if fd, must use ylog=F
+  ser=data[,y]
+  pgr=NULL
+  if(!is.null(gr)) pgr=data[,gr]
+  if(!is.null(fd)) pgr=data[,fd]
+  #get hyper parameters
+  hyperpars=besthyper(y=ser, pgr=pgr, Efix=Efix, taufix=taufix)
   #store smap output
+  ser_lags=make_block(ser, max_lag = hyperpars$bestE+1, tau=hyperpars$bestTau)[,-1]
+  if(!is.null(pgr)) {
+    ser_lags$col1=pgr
+  }
   smap_results=block_lnlp(ser_lags, tp = 0, method = "s-map", 
-                          columns = paste0("col1_",1:bestE), 
-                          target_column = "pgr", theta=bestTheta,
+                          columns = paste0("col1_",hyperpars$bestTau*(1:hyperpars$bestE)), 
+                          target_column = "col1", theta=hyperpars$bestTheta,
                           first_column_time = F, silent = T,
                           stats_only = F, save_smap_coefficients = T)
   resultsdf=cbind(smap_results$model_output[[1]], smap_results$smap_coefficients[[1]])
-  if(!is.null(gr)) {
-    resultsdf$Obs_abund=data$PopRescale #exp(ser)
-    resultsdf$Pred_abund=lag(resultsdf$Obs_abund)*exp(resultsdf$pred)
-    #ylog not used to get predictions, but used for jacobian
-    if(ylog==T) form="gr-log"
-    if(ylog==F) form="gr-ut"
+  #untransformed abundance
+  resultsdf$Obs_abund=data$PopRescale
+  #get untranformed abundance predictions based on model type
+  if(is.null(fd) & is.null(gr) & ylog==F) {
+    resultsdf$Pred_abund=resultsdf$pred
+    form="ut-ut"
+  }  
+  if(is.null(fd) & is.null(gr) & ylog==T) {
+    resultsdf$Pred_abund=exp(resultsdf$pred)
+    form="log-log"
   }
   if(!is.null(fd)) {
-    resultsdf$Obs_abund=data$PopRescale #exp(ser)
     resultsdf$Pred_abund=lag(resultsdf$Obs_abund)+resultsdf$pred
     form="fd-ut"
   }
-  modelR2=getR2(resultsdf) #get true loo R2
+  if(!is.null(gr)) {
+    resultsdf$Pred_abund=lag(resultsdf$Obs_abund)*exp(resultsdf$pred)
+    #ylog is not used to get predictions, but used for jacobian construction
+    if(ylog==T) form="gr-log"
+    if(ylog==F) form="gr-ut"
+  }
+  #R2 for model
+  modelR2=getR2(resultsdf) 
+  #R2 for untransformed abundance
   modelR2_abund=getR2(resultsdf, obse="Obs_abund", prede="Pred_abund")
-  modelstats=data.frame(E=bestE, Emax=Emax, theta=bestTheta, num_pred=smap_results$num_pred,
+  modelstats=data.frame(E=hyperpars$bestE, tau=hyperpars$bestTau, theta=hyperpars$bestTheta, 
+                        Emax=hyperpars$Emax, num_pred=smap_results$num_pred,
                         R2model=modelR2, R2abund=modelR2_abund, rho=smap_results$rho)
   return(list(modelstats=modelstats, resultsdf=resultsdf, form=form))
 }
 
 #select among multiple models
-smap_model_options=function(data, model, Efix=NULL) {
+smap_model_options=function(data, model, Efix=NULL, taufix=NULL) {
   if(model==1) {
-    modelresults=smap_model(data, y="PopRescale", ylog=F, Efix=Efix)
+    modelresults=smap_model(data, y="PopRescale", ylog=F, Efix=Efix, taufix=taufix)
   }
   if(model==2) {
-    modelresults=smap_model(data, y="PopRescale_log", ylog=T, Efix=Efix)
+    modelresults=smap_model(data, y="PopRescale_log", ylog=T, Efix=Efix, taufix=taufix)
   }
   if(model==3) {
-    modelresults=smap_model_gr_fd(data, fd="PopRescale_fd", y="PopRescale", ylog=F, Efix=Efix)
+    modelresults=smap_model(data, fd="PopRescale_fd", y="PopRescale", ylog=F, Efix=Efix, taufix=taufix)
   }
   if(model==4) {
-    modelresults=smap_model_gr_fd(data, fd="PopRescale_gr", y="PopRescale", ylog=F, Efix=Efix)
+    modelresults=smap_model(data, fd="PopRescale_gr", y="PopRescale", ylog=F, Efix=Efix, taufix=taufix)
   }
   if(model==5) {
-    modelresults=smap_model_gr_fd(data, fd="PopRescale_gr", y="PopRescale_log", ylog=T, Efix=Efix)
+    modelresults=smap_model(data, fd="PopRescale_gr", y="PopRescale_log", ylog=T, Efix=Efix, taufix=taufix)
   }
   return(modelresults)
 }

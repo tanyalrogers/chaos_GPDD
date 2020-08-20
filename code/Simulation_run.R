@@ -1,6 +1,5 @@
 # Simulated data
 
-library("rgpdd")
 library("ggplot2")
 library("dplyr")
 library("tidyr")
@@ -8,19 +7,45 @@ library("rEDM")
 library("purrr")
 
 source("./code/GPDD_stability_functions.R")
-load(file = "./data/sims_results.Rdata")
+#load(file = "./data/sims_results.Rdata")
+source("~/GRAD SCHOOL/R reference/ggplot themes rogers.R")
 
-sims=read.csv("./data/ChaosMetaAnalysisSimulatedData.csv")
-sims_d=select(sims, ID, Model, TimeStep, NoiseLevel, Classification, Sim.1:Sim.10) %>% 
-  gather(SimNumber, Value, Sim.1:Sim.10) %>% 
+
+sims=read.csv("./data/ChaosMetaAnalysisSimulatedDataCORRECTED.csv")
+sims$Classification=recode(sims$Classification, Periodic="periodic")
+sims_d=select(sims, ID, Model, TimeStep, NoiseLevel, Classification, Sim.1:Sim.2) %>% 
+  gather(SimNumber, Value, Sim.1:Sim.2) %>% 
   group_by(ID,Model,Classification,NoiseLevel,SimNumber) %>%  mutate(TSlength=length(Value)) %>% ungroup() %>% 
   group_by(ID,Model,Classification,NoiseLevel,TSlength,SimNumber) %>% nest() %>% 
   mutate(data=map(data, as.data.frame))
 modelorder=unique(arrange(sims_d, Classification, Model)$Model)
 sims_d$Model=factor(sims_d$Model, levels=modelorder)
 
-#regression method
+#plot timeseries
+sims_plot=filter(sims_d, SimNumber=="Sim.1" & TSlength==50 & NoiseLevel==0.1)
+par(mfrow=c(2,3))
+for(i in 1:nrow(sims_plot)) {
+  dtemp=sims_plot$data[[i]]
+  plot(Value~TimeStep, data=dtemp, main=sims_plot$Model[i], type="l")
+  #pacf(dtemp$Value,main=sims_plot$Model[i])
+}
+
 sims_results=select(sims_d, ID, SimNumber)
+
+#best hyperparameters
+sims_results$hyperpars=map(sims_d$data, besthyper, y="Value")
+sims_d=cbind(sims_d, bind_rows(sims_results$hyperpars))
+
+ggplot(sims_d, aes(x=Model, y=bestE, color=Classification)) +
+  facet_grid(TSlength~NoiseLevel, scales = "free_y") + geom_hline(yintercept = 0) +
+  geom_point() + #geom_boxplot() + 
+  theme_bw() + xlabvert
+ggplot(sims_d, aes(x=Model, y=bestTau, color=Classification)) +
+  facet_grid(TSlength~NoiseLevel, scales = "free_y") + geom_hline(yintercept = 0) +
+  geom_point() + #geom_boxplot() + 
+  theme_bw() + xlabvert
+
+#regression method
 sims_results$regLE=map(sims_d$data, regLE, y="Value")
 sims_d$LEreg=map_dbl(sims_results$regLE, ~.x$LEreg)
 sims_d$LEreg_se=map_dbl(sims_results$regLE, ~.x$LEreg_se)

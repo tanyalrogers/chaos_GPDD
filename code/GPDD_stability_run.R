@@ -14,8 +14,15 @@ load(file = "./data/gpdd_d.Rdata")
 # gpdd_results=filter(gpdd_results, MainID %in% focal)
 # gpdd_d=filter(gpdd_d, MainID %in% focal)
 
-#fit models
+
 gpdd_results=select(gpdd_d, MainID)
+
+#hyperpars
+gpdd_results$hyperpars=map(gpdd_d$data_rescale, besthyper, y="PopRescale")
+gpdd_results$hyperparslog=map(gpdd_d$data_rescale, besthyper, y="PopRescale_log")
+gpdd_d=cbind(gpdd_d, bind_rows(gpdd_results$hyperparslog))
+
+#fit models
 #ut-ut
 gpdd_results$modelresults1=map(gpdd_d$data_rescale, smap_model, y="PopRescale", ylog=F)
 #log-log

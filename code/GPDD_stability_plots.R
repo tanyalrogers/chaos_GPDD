@@ -279,3 +279,5 @@ for(i in 1:8) {
 }
 
 cor(dup$data_rescale[53][[1]]$PopRescale_log,dup$data_rescale[54][[1]]$PopRescale_log)
+
+ser=hightau[1,]$data_rescale[[1]]$PopRescale_log
