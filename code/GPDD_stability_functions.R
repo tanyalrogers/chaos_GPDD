@@ -8,86 +8,155 @@ getR2=function(resultsdf, obse="obs", prede="pred") {
   R2=1-sum((d[,obse]-d[,prede])^2)/sum((d[,obse]-mean(d[,obse]))^2)
 }
 
-besthyper=function(data=NULL, y, pgr=NULL, Efix=NULL, taufix=NULL) { 
+besthyper=function(data=NULL, Efix=NULL, taufix=NULL, y, ylog, pgr=NULL) { 
   #get best E, tau, theta
   #y is the time series
+  if(ylog==T & pgr=="fd") stop("must use ylog=F for pgr='fd'")
   #if providing dataframe containing y, give y as character (column name)
   if(!is.null(data)) {
-    ser=data[,y]
+    ser_or=data[,y]
   } else {
-    ser=y
+    ser_or=y
   }
-  #set max E based on effective ts length (longest string of non-NA values)
+  #log transform
+  if(ylog==T) ser=log(ser_or) else ser=ser_or
+  if(pgr=="gr") ser_log=log(ser_or)
+  
+  #get effective ts length (longest string of non-NA values)
   len=rle(!is.na(ser))
   serlen=max(len$lengths[len$values==TRUE])
+  #set max E
   #Emax=min(12,round(sqrt(serlen),0))
-  Emax=min(12,floor(sqrt(serlen))) #round down
+  #Emax=min(12,floor(sqrt(serlen))) #round down
   
   if(!is.null(taufix)) {
     tautry=taufix #set tau to fixed value
   } else {
-    tautry=1:Emax
+    #tautry=1:Emax
+    tautry=1:6 #24
   }
   if(!is.null(Efix)) {
     Etry=Efix #set E to fixed value
   } else {
-    Etry=1:Emax
+    #Etry=1:Emax
+    Etry=1:6 #12
   }
-  simplex_results=expand.grid(Etry, tautry)
-  colnames(simplex_results)=c("E","tau")
-  simplex_results=filter(simplex_results, E*tau<=Emax)
+  
+  thetatest = c(0, 1e-04, 3e-04, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8)
+  
+  # simplex_results=expand.grid(Etry, tautry)
+  # colnames(simplex_results)=c("E","tau")
+  
+  simplex_results=expand.grid(Etry, tautry, thetatest)
+  colnames(simplex_results)=c("E","tau","theta")
+  #determine sort order
+  simplex_results=arrange(simplex_results, theta, tau, E)
+  
+  #filter candidate models 
+  #simplex_results=filter(simplex_results, E*tau<=Emax)
+  if(length(Etry)!=1 & length(tautry)!=1) {
+    #if E or tau are both free
+    simplex_results=filter(simplex_results, E*(E+tau)<serlen & E*tau/serlen<0.2)
+  } else if(length(Etry)!=1 | length(tautry)!=1) {
+    #if one of E or tau are free, the other fixed
+    simplex_results=filter(simplex_results, E*(E+tau)<serlen)
+  } else {
+    #if both fixed, make sure E isn't too large
+    while(simplex_results$E*(simplex_results$E+simplex_results$tau)>serlen) {
+      simplex_results$E=simplex_results$E-1
+    }
+  }
   simplex_results$rmse=NA
   simplex_results$npred=NA
   
   #generate lags
-  ser_lags=make_block(ser, max_lag = Emax+1, tau=1)[,-1]
-  #if using growth rate as response, substitute it
-  if(!is.null(pgr)) {
-    ser_lags$col1=pgr
-  }
+  #ser_lags=make_block(ser, max_lag = Emax+1, tau=1)[,-1]
+  ser_lags=make_block(ser, max_lag = max(simplex_results$E*simplex_results$tau)+1, tau=1)[,-1]
+
   #ser_lags=na.omit(ser_lags) #standardize targets
   #get best E and tau using simplex
   for(i in 1:nrow(simplex_results)) {
-    simptemp=block_lnlp(ser_lags, tp = 0, method = "simplex", 
+    #if using growth rate as response, substitute it
+    if(pgr=="fd") {
+      ser_lags$col1=ser-lag(ser,simplex_results$tau[i])
+    } 
+    if(pgr=="gr") {
+      ser_lags$col1=ser_log-lag(ser_log,simplex_results$tau[i])
+    } 
+    # simptemp=block_lnlp(ser_lags, tp = 0, method = "simplex", 
+    #                     columns = paste0("col1_",simplex_results$tau[i]*(1:simplex_results$E[i])), 
+    #                     target_column = "col1",
+    #                     first_column_time = F, silent = T, stats_only = F)
+    simptemp=block_lnlp(ser_lags, tp = 0, method = "s-map", 
                         columns = paste0("col1_",simplex_results$tau[i]*(1:simplex_results$E[i])), 
-                        target_column = "col1",
+                        target_column = "col1", theta=simplex_results$theta[i],
                         first_column_time = F, silent = T, stats_only = F)
     simplex_results$rmse[i]=simptemp$rmse
     simplex_results$npred[i]=simptemp$num_pred
+    resultsdf=simptemp$model_output[[1]]
+    resultsdf$Obs_abund=ser_or
+    #get error based on abundance
+    if(pgr=="none" & ylog==F) {
+      resultsdf$Pred_abund=resultsdf$pred
+    }  
+    if(pgr=="none" & ylog==T) {
+      resultsdf$Pred_abund=exp(resultsdf$pred)
+    }
+    if(pgr=="fd") {
+      resultsdf$Pred_abund=lag(ser_or,simplex_results$tau[i])+resultsdf$pred
+      #simplex_results$rmse[i]=sqrt(sum((ser_or-Pred_abund)^2, na.rm=T)/simplex_results$npred[i])
+    }
+    if(pgr=="gr") {
+      resultsdf$Obs_abund=ser_or
+      resultsdf$Pred_abund=lag(ser_or,simplex_results$tau[i])*exp(resultsdf$pred)
+      #simplex_results$rmse[i]=sqrt(sum((ser_or-Pred_abund)^2, na.rm=T)/simplex_results$npred[i])
+    }
+    simplex_results$rmse[i]=-getR2(resultsdf, obse="Obs_abund", prede="Pred_abund")
   }
-  simplex_results$error=with(simplex_results, ifelse(npred-E^2<0, NA, npred*rmse^2/(npred-E^2)))
+  #calculate error accounting for df
+  #simplex_results$error=with(simplex_results, ifelse(npred-E^2<0, NA, npred*rmse^2/(npred-E^2)))
+  simplex_results$error=round(simplex_results$rmse,6)
   bestE=simplex_results$E[which.min(simplex_results$error)]
   bestTau=simplex_results$tau[which.min(simplex_results$error)]
-  #get best theta
-  thetatest = c(0, 1e-04, 3e-04, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8)
-  ser_lags=make_block(ser, max_lag = bestE+1, tau=bestTau)[,-1]
-  if(!is.null(pgr)) {
-    ser_lags$col1=pgr
-  }
-  smap_results=block_lnlp(ser_lags, tp = 0, method = "s-map", 
-                          columns = paste0("col1_",bestTau*(1:bestE)),
-                          target_column = "col1", theta=thetatest,
-                          first_column_time = F, silent = T)
-  bestTheta=smap_results$theta[which.min(smap_results$rmse)]
+  bestTheta=simplex_results$theta[which.min(simplex_results$error)]
   
-  return(data.frame(bestE=bestE, bestTau=bestTau, bestTheta=bestTheta, Emax=Emax))
+  # #get best theta
+  # ser_lags=make_block(ser, max_lag = bestE+1, tau=bestTau)[,-1]
+  # #if using growth rate as response, substitute it
+  # if(pgr=="fd") {
+  #   ser_lags$col1=ser-lag(ser,bestTau)
+  # } 
+  # if(pgr=="gr") {
+  #   ser_lags$col1=ser_log-lag(ser_log,bestTau)
+  # } 
+  # smap_results=block_lnlp(ser_lags, tp = 0, method = "s-map", 
+  #                         columns = paste0("col1_",bestTau*(1:bestE)),
+  #                         target_column = "col1", theta=thetatest,
+  #                         first_column_time = F, silent = T)
+  # bestTheta=smap_results$theta[which.min(smap_results$rmse)]
+  # 
+  return(data.frame(bestE=bestE, bestTau=bestTau, bestTheta=bestTheta, Emax=max(simplex_results$E), taumax=max(simplex_results$tau)))
 }
 
-smap_model=function(data, y, ylog, gr=NULL, fd=NULL, Efix=NULL, taufix=NULL) {
-  #can supply either gr (growth rate) or fd (first difference) or none
-  #ylog indicates whether y is log transformed
-  #if fd, must use ylog=F
-  ser=data[,y]
-  pgr=NULL
-  if(!is.null(gr)) pgr=data[,gr]
-  if(!is.null(fd)) pgr=data[,fd]
+smap_model=function(data, y, ylog, pgr="none", Efix=NULL, taufix=NULL) {
+  #y col name for untransformed data
+  #ylog indicates whether to y log transform y
+  #to use different response, set pgr to "gr" (growth rate) or "fd" (first difference)
+  #if pgr="fd", must use ylog=F
   #get hyper parameters
-  hyperpars=besthyper(y=ser, pgr=pgr, Efix=Efix, taufix=taufix)
+  hyperpars=besthyper(data=data, y=y, ylog=ylog, pgr=pgr, Efix=Efix, taufix=taufix)
+  ser_or=data[,y]
+  #log transform
+  if(ylog==T) ser=log(ser_or) else ser=ser_or
+  if(pgr=="gr") ser_log=log(ser_or)
   #store smap output
   ser_lags=make_block(ser, max_lag = hyperpars$bestE+1, tau=hyperpars$bestTau)[,-1]
-  if(!is.null(pgr)) {
-    ser_lags$col1=pgr
-  }
+  if(pgr=="fd") {
+    ser_lags$col1=ser-lag(ser,hyperpars$bestTau)
+  } 
+  if(pgr=="gr") {
+    ser_lags$col1=ser_log-lag(ser_log,hyperpars$bestTau)
+  } 
   smap_results=block_lnlp(ser_lags, tp = 0, method = "s-map", 
                           columns = paste0("col1_",hyperpars$bestTau*(1:hyperpars$bestE)), 
                           target_column = "col1", theta=hyperpars$bestTheta,
@@ -95,22 +164,22 @@ smap_model=function(data, y, ylog, gr=NULL, fd=NULL, Efix=NULL, taufix=NULL) {
                           stats_only = F, save_smap_coefficients = T)
   resultsdf=cbind(smap_results$model_output[[1]], smap_results$smap_coefficients[[1]])
   #untransformed abundance
-  resultsdf$Obs_abund=data$PopRescale
+  resultsdf$Obs_abund=ser_or
   #get untranformed abundance predictions based on model type
-  if(is.null(fd) & is.null(gr) & ylog==F) {
+  if(pgr=="none" & ylog==F) {
     resultsdf$Pred_abund=resultsdf$pred
     form="ut-ut"
   }  
-  if(is.null(fd) & is.null(gr) & ylog==T) {
+  if(pgr=="none" & ylog==T) {
     resultsdf$Pred_abund=exp(resultsdf$pred)
     form="log-log"
   }
-  if(!is.null(fd)) {
-    resultsdf$Pred_abund=lag(resultsdf$Obs_abund)+resultsdf$pred
+  if(pgr=="fd") {
+    resultsdf$Pred_abund=lag(resultsdf$Obs_abund,hyperpars$bestTau)+resultsdf$pred
     form="fd-ut"
   }
-  if(!is.null(gr)) {
-    resultsdf$Pred_abund=lag(resultsdf$Obs_abund)*exp(resultsdf$pred)
+  if(pgr=="gr") {
+    resultsdf$Pred_abund=lag(resultsdf$Obs_abund,hyperpars$bestTau)*exp(resultsdf$pred)
     #ylog is not used to get predictions, but used for jacobian construction
     if(ylog==T) form="gr-log"
     if(ylog==F) form="gr-ut"
@@ -120,27 +189,27 @@ smap_model=function(data, y, ylog, gr=NULL, fd=NULL, Efix=NULL, taufix=NULL) {
   #R2 for untransformed abundance
   modelR2_abund=getR2(resultsdf, obse="Obs_abund", prede="Pred_abund")
   modelstats=data.frame(E=hyperpars$bestE, tau=hyperpars$bestTau, theta=hyperpars$bestTheta, 
-                        Emax=hyperpars$Emax, num_pred=smap_results$num_pred,
+                        Emax=hyperpars$Emax, taumax=hyperpars$taumax, num_pred=smap_results$num_pred,
                         R2model=modelR2, R2abund=modelR2_abund, rho=smap_results$rho)
   return(list(modelstats=modelstats, resultsdf=resultsdf, form=form))
 }
 
 #select among multiple models
-smap_model_options=function(data, model, Efix=NULL, taufix=NULL) {
+smap_model_options=function(data, Efix=NULL, taufix=NULL, y, model) {
   if(model==1) {
-    modelresults=smap_model(data, y="PopRescale", ylog=F, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, y=y, ylog=F, Efix=Efix, taufix=taufix)
   }
   if(model==2) {
-    modelresults=smap_model(data, y="PopRescale_log", ylog=T, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, y=y, ylog=T, Efix=Efix, taufix=taufix)
   }
   if(model==3) {
-    modelresults=smap_model(data, fd="PopRescale_fd", y="PopRescale", ylog=F, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, y=y, pgr="fd", ylog=F, Efix=Efix, taufix=taufix)
   }
   if(model==4) {
-    modelresults=smap_model(data, fd="PopRescale_gr", y="PopRescale", ylog=F, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, y=y, pgr="gr", ylog=F, Efix=Efix, taufix=taufix)
   }
   if(model==5) {
-    modelresults=smap_model(data, fd="PopRescale_gr", y="PopRescale_log", ylog=T, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, y=y, pgr="gr", ylog=T, Efix=Efix, taufix=taufix)
   }
   return(modelresults)
 }
@@ -151,6 +220,7 @@ getJacobians=function(modelresults){
   form=modelresults$form
   
   ndim=modelresults$modelstats$E #dimension
+  tau=modelresults$modelstats$tau #tau
   len=nrow(modelresults$resultsdf)
   coefs=modelresults$resultsdf[,paste0("c_",1:ndim)]
   jacobians=array(dim = c(ndim,ndim,len))
@@ -189,16 +259,16 @@ getJacobians=function(modelresults){
     x_obs=modelresults$resultsdf$Obs_abund
     r_x=exp(modelresults$resultsdf$pred)
     if(ndim==1) {
-      jacobians[,,]=(coefs)*r_x/lag(x_obs)
+      jacobians[,,]=(coefs)*r_x/lag(x_obs, tau)
     } else {
       for(i in 1:len) {
         if(all(!is.na(coefs[i,]))) {
           J1<-J2<-J3<-matrix(nrow = ndim, ncol = ndim, 0)
-          diag(J1)<-c(r_x[i], x_obs[(i-1):(i-ndim+1)])
+          diag(J1)<-c(r_x[i], x_obs[((i-1):(i-ndim+1))*tau])
           #c(r_x[i], lag(x_obs)[i], lag(x_obs,2)[i], lag(x_obs,3)[i], lag(x_obs,4)[i])
           J2[1,]=as.numeric(coefs[i,])
           J2[2:ndim,1:(ndim-1)]=diag(ndim-1)
-          diag(J3)<-1/x_obs[(i-1):(i-ndim)] 
+          diag(J3)<-1/x_obs[((i-1):(i-ndim))*tau] 
           #c(1/(lag(x_obs)[i]), 1/(lag(x_obs,2)[i]), 1/(lag(x_obs,3)[i]), 1/(lag(x_obs,4)[i]), 1/(lag(x_obs,5)[i]))
           jacobians[,,i]=J1%*%J2%*%J3
         }
@@ -210,14 +280,14 @@ getJacobians=function(modelresults){
     x_obs=modelresults$resultsdf$Obs_abund
     r_x=exp(modelresults$resultsdf$pred)
     if(ndim==1) {
-      jacobians[,,]=(coefs*lag(x_obs)+1)*r_x
+      jacobians[,,]=(coefs*lag(x_obs,tau)+1)*r_x
     } else {
       for(i in 1:len) {
         if(all(!is.na(coefs[i,]))) {
           J1<-J2<-matrix(nrow = ndim, ncol = ndim, 0)
           diag(J1)<-c(r_x[i], rep(1,ndim-1))
           #c(r_x[i], 1, 1, 1)
-          J2[1,]=as.numeric(coefs[i,])*x_obs[i-1]+c(1,rep(0,ndim-1))
+          J2[1,]=as.numeric(coefs[i,])*x_obs[i-tau]+c(1,rep(0,ndim-1))
           J2[2:ndim,1:(ndim-1)]=diag(ndim-1)
           jacobians[,,i]=J1%*%J2
         }
@@ -234,11 +304,11 @@ getJacobians=function(modelresults){
       for(i in 1:len) {
         if(all(!is.na(coefs[i,]))) {
           J1<-J2<-J3<-matrix(nrow = ndim, ncol = ndim, 0)
-          diag(J1)<-c(r_x[i]*x_obs[i-1], x_obs[(i-1):(i-ndim+1)])
+          diag(J1)<-c(r_x[i]*x_obs[i-tau], x_obs[((i-1):(i-ndim+1))*tau])
           #c(r_x[i]*lag(x_obs)[i], lag(x_obs)[i], lag(x_obs,2)[i], lag(x_obs,3)[i], lag(x_obs,4)[i])
           J2[1,]=as.numeric(coefs[i,])+c(1,rep(0,ndim-1))
           J2[2:ndim,1:(ndim-1)]=diag(ndim-1)
-          diag(J3)<-1/x_obs[(i-1):(i-ndim)] 
+          diag(J3)<-1/x_obs[((i-1):(i-ndim))*tau] 
           #c(1/(lag(x_obs)[i]), 1/(lag(x_obs,2)[i]), 1/(lag(x_obs,3)[i]), 1/(lag(x_obs,4)[i]), 1/(lag(x_obs,5)[i]))
           jacobians[,,i]=J1%*%J2%*%J3
         }
@@ -250,12 +320,14 @@ getJacobians=function(modelresults){
 }
 
 #get local and global LEs
-getStability=function(jacobians) {
+getStability=function(modelresults, jacobians) {
+  tau=modelresults$modelstats$tau
+  
   len=dim(jacobians)[3]
   ndim=dim(jacobians)[1]
   
   if(ndim==1) {
-    lle=log(abs(jacobians[1,1,]))
+    lle=log(abs(jacobians[1,1,]))/tau
   } else {
     lle=numeric(length = len)
     for(i in 1:len) {
@@ -263,7 +335,7 @@ getStability=function(jacobians) {
       if(any(is.na(Jac))) {
         lle[i]=NA
       } else {
-        lle[i]=log(max(abs(eigen(Jac, only.values = T)$values))) 
+        lle[i]=log(max(abs(eigen(Jac, only.values = T)$values)))/tau
       }
     }
   }
@@ -283,26 +355,31 @@ getStability=function(jacobians) {
   } else {
     if(ndim==1) {
       #average over all timepoints
-      gle=mean(log(abs(jacobians[1,1,])), na.rm=T)
+      gle=mean(log(abs(jacobians[1,1,])), na.rm=T)/tau
     } else {
       #compute over longest run of non-missing values
       starti=sum(runlen$lengths[1:(which.max(runlen$lengths)-1)])+1
       endi=sum(runlen$lengths[1:(which.max(runlen$lengths))])
-      Jacs=jacobians[,,starti:endi]
-      nk=dim(Jacs)[3]
-      Jk=Jacs[,,1]
-      QR=qr(Jk)
-      R=qr.R(QR)
-      Q=qr.Q(QR)
-      Rcum=R
-      for(k in 2:nk) {
-        Jk=Jacs[,,k]
-        QR=qr(Jk%*%Q)
+      LEtemp=numeric(tau)
+      for(i in 1:tau){
+        indices=seq(from=starti+i-1, to=endi, by=tau)
+        Jacs=jacobians[,,indices]
+        nk=dim(Jacs)[3]
+        Jk=Jacs[,,1]
+        QR=qr(Jk)
         R=qr.R(QR)
         Q=qr.Q(QR)
-        Rcum=R%*%Rcum
+        Rcum=R
+        for(k in 2:nk) {
+          Jk=Jacs[,,k]
+          QR=qr(Jk%*%Q)
+          R=qr.R(QR)
+          Q=qr.Q(QR)
+          Rcum=R%*%Rcum
+        }
+        LEtemp[i]=1/nk*log(max(abs(diag(Rcum))))/tau
       }
-      gle=1/nk*log(max(abs(diag(Rcum))))
+      gle=mean(LEtemp)
     }
   }
   
@@ -310,14 +387,14 @@ getStability=function(jacobians) {
 }
 
 #1d LE from best model
-LE1d=function(data, bestmodel) {
-  modelresults=smap_model_options(data, bestmodel, Efix=1)
+LE1d=function(data, bestmodel, taufix=NULL, y) {
+  modelresults=smap_model_options(data=data, y=y, model=bestmodel, Efix=1, taufix=taufix)
   jacobians=getJacobians(modelresults)
-  stability=getStability(jacobians)
+  stability=getStability(modelresults, jacobians)
   return(stability)
 }
 
-# Regression-based LE (Rosenstein method)
+# Regression-based LE (Rosenstein method) ***update E and tau selection***
 regLE=function(data, y) {
   #recompute bestE with simplex
   ser=data[,y]
@@ -377,6 +454,49 @@ regLE=function(data, y) {
   LEreg_se=sqrt(vcoef[2,2])
   
   return(data.frame(LEreg=LEreg, LEreg_se=LEreg_se))
+}
+
+#gets LE by averaging segments ***doesn't work for tau>1***
+LEshift=function(modelresults, jacobians) {
+  tau=modelresults$modelstats$tau
+  
+  len=dim(jacobians)[3]
+  ndim=dim(jacobians)[1]
+  
+  runlen=rle(!is.na(jacobians[1,1,]))
+  serlen=max(runlen$lengths[runlen$values==TRUE])
+  
+  for(i in serlen-2) {
+    LEtemp=numeric(len-i)
+    for(j in 1:(len-i)) {
+      Jacs=jacobians[,,j:(j+i)]
+      if(any(is.na(Jacs))) {
+        LEtemp[j]=NA
+      } else if(ndim==1) {
+        LEtemp[j]=mean(log(abs(Jacs)), na.rm=T)/tau
+      } else {
+        nk=dim(Jacs)[3]
+        Jk=Jacs[,,1]
+        QR=qr(Jk)
+        R=qr.R(QR)
+        Q=qr.Q(QR)
+        Rcum=R
+        for(k in 2:nk) {
+          Jk=Jacs[,,k]
+          QR=qr(Jk%*%Q)
+          R=qr.R(QR)
+          Q=qr.Q(QR)
+          Rcum=R%*%Rcum
+        }
+        LEtemp[j]=1/nk*log(max(abs(diag(Rcum))))/tau
+      }
+    }
+    #LEseg$le_n[i+1]=length(which(!is.na(LEtemp)))
+    #LEseg$le_sd[i+1]=sd(LEtemp, na.rm=T)
+    #LEseg$le_ci[i+1]=LEseg$le_sd[i+1]/sqrt(LEseg$le_n[i+1])*qt(p=0.95, df=LEseg$le_n[i+1]-1)
+  }
+  le_mean=mean(LEtemp, na.rm=T)
+  return(le_mean)
 }
 
 #converts timesteps to months
