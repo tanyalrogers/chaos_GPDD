@@ -8,7 +8,7 @@ getR2=function(resultsdf, obse="obs", prede="pred") {
   R2=1-sum((d[,obse]-d[,prede])^2)/sum((d[,obse]-mean(d[,obse]))^2)
 }
 
-besthyper=function(data=NULL, Efix=NULL, taufix=NULL, y, ylog, pgr=NULL) { 
+besthyper=function(data=NULL, Efix=NULL, taufix=NULL, y, ylog, pgr=NULL, returntable=F) { 
   #get best E, tau, theta
   #y is the time series
   if(ylog==T & pgr=="fd") stop("must use ylog=F for pgr='fd'")
@@ -42,57 +42,61 @@ besthyper=function(data=NULL, Efix=NULL, taufix=NULL, y, ylog, pgr=NULL) {
     Etry=1:6 #12
   }
   
-  thetatest = c(0, 1e-04, 3e-04, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8)
+  #thetatest = c(0, 1e-04, 3e-04, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8)
+  thetatest = c(0, 0.1, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8)
   
-  # simplex_results=expand.grid(Etry, tautry)
-  # colnames(simplex_results)=c("E","tau")
+  # model_selection=expand.grid(Etry, tautry)
+  # colnames(model_selection)=c("E","tau")
   
-  simplex_results=expand.grid(Etry, tautry, thetatest)
-  colnames(simplex_results)=c("E","tau","theta")
+  model_selection=expand.grid(Etry, tautry, thetatest)
+  colnames(model_selection)=c("E","tau","theta")
   #determine sort order
-  simplex_results=arrange(simplex_results, theta, tau, E)
+  model_selection=arrange(model_selection, tau, theta, E)
   
   #filter candidate models 
-  #simplex_results=filter(simplex_results, E*tau<=Emax)
+  #model_selection=filter(model_selection, E*tau<=Emax)
   if(length(Etry)!=1 & length(tautry)!=1) {
     #if E or tau are both free
-    simplex_results=filter(simplex_results, E*(E+tau)<serlen & E*tau/serlen<0.2)
+    #model_selection=filter(model_selection, E*(E+tau)<serlen & E*tau/serlen<0.2)
+    model_selection=filter(model_selection, E^2<=serlen & E*tau/serlen<=0.2)
   } else if(length(Etry)!=1 | length(tautry)!=1) {
     #if one of E or tau are free, the other fixed
-    simplex_results=filter(simplex_results, E*(E+tau)<serlen)
+    #model_selection=filter(model_selection, E*(E+tau)<serlen)
+    model_selection=filter(model_selection, E^2<=serlen)
   } else {
     #if both fixed, make sure E isn't too large
-    while(simplex_results$E*(simplex_results$E+simplex_results$tau)>serlen) {
-      simplex_results$E=simplex_results$E-1
+    #while(model_selection$E*(model_selection$E+model_selection$tau)>serlen) {
+    while(model_selection$E^2>serlen) {
+        model_selection$E=model_selection$E-1
     }
   }
-  simplex_results$rmse=NA
-  simplex_results$npred=NA
+  model_selection$rmse=NA
+  model_selection$npred=NA
   
   #generate lags
   #ser_lags=make_block(ser, max_lag = Emax+1, tau=1)[,-1]
-  ser_lags=make_block(ser, max_lag = max(simplex_results$E*simplex_results$tau)+1, tau=1)[,-1]
+  ser_lags=make_block(ser, max_lag = max(model_selection$E*model_selection$tau)+1, tau=1)[,-1]
 
   #ser_lags=na.omit(ser_lags) #standardize targets
   #get best E and tau using simplex
-  for(i in 1:nrow(simplex_results)) {
+  for(i in 1:nrow(model_selection)) {
     #if using growth rate as response, substitute it
     if(pgr=="fd") {
-      ser_lags$col1=ser-lag(ser,simplex_results$tau[i])
+      ser_lags$col1=ser-lag(ser,model_selection$tau[i])
     } 
     if(pgr=="gr") {
-      ser_lags$col1=ser_log-lag(ser_log,simplex_results$tau[i])
+      ser_lags$col1=ser_log-lag(ser_log,model_selection$tau[i])
     } 
     # simptemp=block_lnlp(ser_lags, tp = 0, method = "simplex", 
-    #                     columns = paste0("col1_",simplex_results$tau[i]*(1:simplex_results$E[i])), 
+    #                     columns = paste0("col1_",model_selection$tau[i]*(1:model_selection$E[i])), 
     #                     target_column = "col1",
     #                     first_column_time = F, silent = T, stats_only = F)
     simptemp=block_lnlp(ser_lags, tp = 0, method = "s-map", 
-                        columns = paste0("col1_",simplex_results$tau[i]*(1:simplex_results$E[i])), 
-                        target_column = "col1", theta=simplex_results$theta[i],
+                        columns = paste0("col1_",model_selection$tau[i]*(1:model_selection$E[i])), 
+                        target_column = "col1", theta=model_selection$theta[i],
                         first_column_time = F, silent = T, stats_only = F)
-    simplex_results$rmse[i]=simptemp$rmse
-    simplex_results$npred[i]=simptemp$num_pred
+    model_selection$rmse[i]=simptemp$rmse
+    model_selection$npred[i]=simptemp$num_pred
     resultsdf=simptemp$model_output[[1]]
     resultsdf$Obs_abund=ser_or
     #get error based on abundance
@@ -103,22 +107,22 @@ besthyper=function(data=NULL, Efix=NULL, taufix=NULL, y, ylog, pgr=NULL) {
       resultsdf$Pred_abund=exp(resultsdf$pred)
     }
     if(pgr=="fd") {
-      resultsdf$Pred_abund=lag(ser_or,simplex_results$tau[i])+resultsdf$pred
-      #simplex_results$rmse[i]=sqrt(sum((ser_or-Pred_abund)^2, na.rm=T)/simplex_results$npred[i])
+      resultsdf$Pred_abund=lag(ser_or,model_selection$tau[i])+resultsdf$pred
+      #model_selection$rmse[i]=sqrt(sum((ser_or-Pred_abund)^2, na.rm=T)/model_selection$npred[i])
     }
     if(pgr=="gr") {
       resultsdf$Obs_abund=ser_or
-      resultsdf$Pred_abund=lag(ser_or,simplex_results$tau[i])*exp(resultsdf$pred)
-      #simplex_results$rmse[i]=sqrt(sum((ser_or-Pred_abund)^2, na.rm=T)/simplex_results$npred[i])
+      resultsdf$Pred_abund=lag(ser_or,model_selection$tau[i])*exp(resultsdf$pred)
+      #model_selection$rmse[i]=sqrt(sum((ser_or-Pred_abund)^2, na.rm=T)/model_selection$npred[i])
     }
-    simplex_results$rmse[i]=-getR2(resultsdf, obse="Obs_abund", prede="Pred_abund")
+    model_selection$rmse[i]=-getR2(resultsdf, obse="Obs_abund", prede="Pred_abund")
   }
   #calculate error accounting for df
-  #simplex_results$error=with(simplex_results, ifelse(npred-E^2<0, NA, npred*rmse^2/(npred-E^2)))
-  simplex_results$error=round(simplex_results$rmse,6)
-  bestE=simplex_results$E[which.min(simplex_results$error)]
-  bestTau=simplex_results$tau[which.min(simplex_results$error)]
-  bestTheta=simplex_results$theta[which.min(simplex_results$error)]
+  #model_selection$error=with(model_selection, ifelse(npred-E^2<0, NA, npred*rmse^2/(npred-E^2)))
+  model_selection$error=round(model_selection$rmse,2)
+  bestE=model_selection$E[which.min(model_selection$error)]
+  bestTau=model_selection$tau[which.min(model_selection$error)]
+  bestTheta=model_selection$theta[which.min(model_selection$error)]
   
   # #get best theta
   # ser_lags=make_block(ser, max_lag = bestE+1, tau=bestTau)[,-1]
@@ -135,16 +139,24 @@ besthyper=function(data=NULL, Efix=NULL, taufix=NULL, y, ylog, pgr=NULL) {
   #                         first_column_time = F, silent = T)
   # bestTheta=smap_results$theta[which.min(smap_results$rmse)]
   # 
-  return(data.frame(bestE=bestE, bestTau=bestTau, bestTheta=bestTheta, Emax=max(simplex_results$E), taumax=max(simplex_results$tau)))
+  if(returntable) {
+    return(model_selection)
+  } else {
+    return(data.frame(bestE=bestE, bestTau=bestTau, bestTheta=bestTheta, Emax=max(model_selection$E), taumax=max(model_selection$tau)))
+  }
 }
 
-smap_model=function(data, y, ylog, pgr="none", Efix=NULL, taufix=NULL) {
+smap_model=function(data, hypars=NULL, y, ylog, pgr="none", Efix=NULL, taufix=NULL) {
   #y col name for untransformed data
   #ylog indicates whether to y log transform y
   #to use different response, set pgr to "gr" (growth rate) or "fd" (first difference)
   #if pgr="fd", must use ylog=F
   #get hyper parameters
-  hyperpars=besthyper(data=data, y=y, ylog=ylog, pgr=pgr, Efix=Efix, taufix=taufix)
+  if(!is.null(hypars)) {
+    hyperpars=hypars
+  } else {
+    hyperpars=besthyper(data=data, y=y, ylog=ylog, pgr=pgr, Efix=Efix, taufix=taufix)
+  }
   ser_or=data[,y]
   #log transform
   if(ylog==T) ser=log(ser_or) else ser=ser_or
@@ -195,21 +207,21 @@ smap_model=function(data, y, ylog, pgr="none", Efix=NULL, taufix=NULL) {
 }
 
 #select among multiple models
-smap_model_options=function(data, Efix=NULL, taufix=NULL, y, model) {
+smap_model_options=function(data, hypars=NULL, Efix=NULL, taufix=NULL, y, model) {
   if(model==1) {
-    modelresults=smap_model(data, y=y, ylog=F, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, hypars=hypars, y=y, ylog=F, Efix=Efix, taufix=taufix)
   }
   if(model==2) {
-    modelresults=smap_model(data, y=y, ylog=T, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, hypars=hypars, y=y, ylog=T, Efix=Efix, taufix=taufix)
   }
   if(model==3) {
-    modelresults=smap_model(data, y=y, pgr="fd", ylog=F, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, hypars=hypars, y=y, pgr="fd", ylog=F, Efix=Efix, taufix=taufix)
   }
   if(model==4) {
-    modelresults=smap_model(data, y=y, pgr="gr", ylog=F, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, hypars=hypars, y=y, pgr="gr", ylog=F, Efix=Efix, taufix=taufix)
   }
   if(model==5) {
-    modelresults=smap_model(data, y=y, pgr="gr", ylog=T, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, hypars=hypars, y=y, pgr="gr", ylog=T, Efix=Efix, taufix=taufix)
   }
   return(modelresults)
 }
@@ -456,47 +468,65 @@ regLE=function(data, y) {
   return(data.frame(LEreg=LEreg, LEreg_se=LEreg_se))
 }
 
-#gets LE by averaging segments ***doesn't work for tau>1***
+#gets LE by averaging segments 
 LEshift=function(modelresults, jacobians) {
   tau=modelresults$modelstats$tau
-  
+
   len=dim(jacobians)[3]
   ndim=dim(jacobians)[1]
   
   runlen=rle(!is.na(jacobians[1,1,]))
   serlen=max(runlen$lengths[runlen$values==TRUE])
   
-  for(i in serlen-2) {
-    LEtemp=numeric(len-i)
-    for(j in 1:(len-i)) {
-      Jacs=jacobians[,,j:(j+i)]
-      if(any(is.na(Jacs))) {
-        LEtemp[j]=NA
-      } else if(ndim==1) {
-        LEtemp[j]=mean(log(abs(Jacs)), na.rm=T)/tau
-      } else {
-        nk=dim(Jacs)[3]
-        Jk=Jacs[,,1]
-        QR=qr(Jk)
-        R=qr.R(QR)
-        Q=qr.Q(QR)
-        Rcum=R
-        for(k in 2:nk) {
-          Jk=Jacs[,,k]
-          QR=qr(Jk%*%Q)
+  Tminus=3:6
+  LEseg=data.frame(SegLen=(serlen-max(Tminus)):(serlen-min(Tminus)), le_mean=NA, le_sd=NA, le_ci=NA, le_n=NA)
+  
+  for(i in 1:nrow(LEseg)) {
+    SegLen=LEseg$SegLen[i]
+    LEtemp=numeric(len-SegLen+1)
+    for(j in 1:length(LEtemp)) {
+      Jacs1=jacobians[,,j:(j+SegLen-1)]
+      LEtemp2=numeric(tau)
+      for(a in 1:tau) {
+        indices=seq(from=1+a-1, to=ifelse(ndim==1,length(Jacs1),dim(Jacs1)[3]), by=tau)
+        if(ndim==1) {
+          Jacs=Jacs1[indices]
+        } else {
+          Jacs=Jacs1[,,indices]
+        }
+        if(any(is.na(Jacs))) {
+          LEtemp2[a]=NA
+        } else if(ndim==1) {
+          LEtemp2[a]=mean(log(abs(Jacs)), na.rm=T)/tau
+        } else {
+          nk=dim(Jacs)[3]
+          Jk=Jacs[,,1]
+          QR=qr(Jk)
           R=qr.R(QR)
           Q=qr.Q(QR)
-          Rcum=R%*%Rcum
+          Rcum=R
+          for(k in 2:nk) {
+            Jk=Jacs[,,k]
+            QR=qr(Jk%*%Q)
+            R=qr.R(QR)
+            Q=qr.Q(QR)
+            Rcum=R%*%Rcum
+          }
+          LEtemp2[a]=1/nk*log(max(abs(diag(Rcum))))/tau
         }
-        LEtemp[j]=1/nk*log(max(abs(diag(Rcum))))/tau
       }
+      LEtemp[j]=mean(LEtemp2, na.rm=T)
     }
-    #LEseg$le_n[i+1]=length(which(!is.na(LEtemp)))
-    #LEseg$le_sd[i+1]=sd(LEtemp, na.rm=T)
-    #LEseg$le_ci[i+1]=LEseg$le_sd[i+1]/sqrt(LEseg$le_n[i+1])*qt(p=0.95, df=LEseg$le_n[i+1]-1)
+    LEseg$le_n[i]=length(which(!is.na(LEtemp)))
+    LEseg$le_mean[i]=mean(LEtemp, na.rm=T)
+    LEseg$le_sd[i]=sd(LEtemp, na.rm=T)
+    LEseg$le_ci[i]=LEseg$le_sd[i]/sqrt(LEseg$le_n[i])*qt(p=0.95, df=LEseg$le_n[i]-1)
   }
-  le_mean=mean(LEtemp, na.rm=T)
-  return(le_mean)
+  
+  minmean=min(LEseg$le_mean) #not necessarily the mean with lowest CI
+  minci=min(LEseg$le_mean-LEseg$le_ci)
+
+  return(list(LEseg=LEseg, minmean=minmean, minci=minci))
 }
 
 #converts timesteps to months
