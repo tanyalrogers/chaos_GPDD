@@ -5,6 +5,7 @@ library("dplyr")
 library("tidyr")
 library("rEDM")
 library("purrr")
+library("furrr")
 
 source("./code/GPDD_stability_functions.R")
 #load(file = "./data/sims_results.Rdata")
@@ -64,7 +65,7 @@ sims_d=select(sims, ID, Model, TimeStep, NoiseLevel, Classification, Sim.1:Sim.5
   gather(SimNumber, Value, Sim.1:Sim.5) %>% 
   group_by(ID,Model,Classification,NoiseLevel,SimNumber) %>%  mutate(TSlength=length(Value)) %>% ungroup() %>% 
   group_by(ID,Model,Classification,NoiseLevel,TSlength,SimNumber) %>% nest() %>% 
-  mutate(data=map(data, as.data.frame))
+  mutate(data=map(data, as.data.frame)) %>% ungroup()
   #left_join(sims_Etau, by=c("ID", "SimNumber"))
 modelorder=unique(arrange(sims_d, Classification, Model)$Model)
 sims_d$Model=factor(sims_d$Model, levels=modelorder)
@@ -72,8 +73,16 @@ sims_d$Model=factor(sims_d$Model, levels=modelorder)
 #results
 sims_results=select(sims_d, ID, SimNumber, Model)
 
+plan(multisession, workers = 2)
 #smap (model 1)
-sims_results$modelresults1=map(sims_d$data, smap_model_options, y="Value", model=1)
+start=Sys.time()
+#sims_results$hpar1=future_map(sims_d$data, besthyper, y="Value", ylog=F, pgr="none")
+sims_results$modelresults1=map2(sims_d$data, sims_results$hpar1, smap_model_options, y="Value", model=1)
+#sims_results$modelresults3=future_map(sims_d$data, smap_model_options, y="Value", model=3)
+end=Sys.time()
+end-start
+sims_d$R1a=map_dbl(sims_results$modelresults1, ~.x$modelstats$R2abund)
+#sims_d$R3a=map_dbl(sims_results$modelresults3, ~.x$modelstats$R2abund)
 # sims_results$modelresults1=pmap(list(sims_d$data, Efix=sims_d$E, taufix=sims_d$Tau), smap_model_options, y="Value", model=1)
 # sims_results$modelresults1=pmap(list(sims_d$data, taufix=sims_d$Tau), smap_model_options, y="Value", model=1)
 #temp
@@ -107,7 +116,7 @@ sims_results$modelresultsbest=ifelse(sims_d$Model %in% logmodels,
 #stability
 sims_results$jacobians=map(sims_results$modelresultsbest, getJacobians)
 sims_results$stability=map2(sims_results$modelresultsbest, sims_results$jacobians, getStability)
-sims_results$LEshift=map2(sims_test_results$modelresultsbest, sims_test_results$jacobians, LEshift)
+sims_results$LEshift=map2(sims_results$modelresultsbest, sims_results$jacobians, LEshift)
 
 #pull results
 sims_d$Ebest=map_dbl(sims_results$modelresultsbest, ~.x$modelstats$E)
