@@ -61,8 +61,8 @@ save(sims_d,  file = "./data/sims_results_knownEtau.Rdata")
 #test with known dynamics ####
 sims=read.csv("./data/ChaosMetaAnalysisSimulatedDataCORRECTED3.csv")
 sims$Classification=recode(sims$Classification, Periodic="periodic")
-sims_d=select(sims, ID, Model, TimeStep, NoiseLevel, Classification, Sim.1:Sim.5) %>% 
-  gather(SimNumber, Value, Sim.1:Sim.5) %>% 
+sims_d=select(sims, ID, Model, TimeStep, NoiseLevel, Classification, Sim.11:Sim.20) %>% 
+  gather(SimNumber, Value, Sim.11:Sim.20) %>% 
   group_by(ID,Model,Classification,NoiseLevel,SimNumber) %>%  mutate(TSlength=length(Value)) %>% ungroup() %>% 
   group_by(ID,Model,Classification,NoiseLevel,TSlength,SimNumber) %>% nest() %>% 
   mutate(data=map(data, as.data.frame)) %>% ungroup()
@@ -73,14 +73,14 @@ sims_d$Model=factor(sims_d$Model, levels=modelorder)
 #results
 sims_results=select(sims_d, ID, SimNumber, Model)
 
-plan(multisession, workers = 2)
+plan(multisession, workers = 4)
 #smap (model 1)
 start=Sys.time()
-#sims_results$hpar1=future_map(sims_d$data, besthyper, y="Value", ylog=F, pgr="none")
-sims_results$modelresults1=map2(sims_d$data, sims_results$hpar1, smap_model_options, y="Value", model=1)
-#sims_results$modelresults3=future_map(sims_d$data, smap_model_options, y="Value", model=3)
+sims_results$hpar1=future_map(sims_d$data, besthyper, y="Value", ylog=F, pgr="none")
 end=Sys.time()
 end-start
+sims_results$modelresults1=map2(sims_d$data, sims_results$hpar1, smap_model_options, y="Value", model=1)
+#sims_results$modelresults3=future_map(sims_d$data, smap_model_options, y="Value", model=3)
 sims_d$R1a=map_dbl(sims_results$modelresults1, ~.x$modelstats$R2abund)
 #sims_d$R3a=map_dbl(sims_results$modelresults3, ~.x$modelstats$R2abund)
 # sims_results$modelresults1=pmap(list(sims_d$data, Efix=sims_d$E, taufix=sims_d$Tau), smap_model_options, y="Value", model=1)
@@ -88,24 +88,36 @@ sims_d$R1a=map_dbl(sims_results$modelresults1, ~.x$modelstats$R2abund)
 #temp
 #sims_results$modelresultsbest=sims_results$modelresults1
 
-#smap (model 2-5)
-#sims_results$modelresults2=map_if(sims_d$data, sims_d$Model %in% logmodels,smap_model, y="Value", ylog=T)
+sims_d_hold=rbind(sims_d_hold, sims_d)
+sims_results_hold=rbind(sims_results_hold, sims_results)
+
+save(sims_d_hold, sims_results_hold, file = "./data/sims_results_hold.Rdata")
+
+sims_d=sims_d_hold
+sims_results=sims_results_hold
+
+#smap (model 2-5) #1 and 3 are same R2, 2 and 4 are same R2
 logmodels=c("PredatorPreyPeriodic", "PredatorPreyChaotic", "HostParParPeriodic", "HostParParChaotic")
 sims_log=filter(sims_d, Model %in% logmodels)
 sims_log_results=filter(sims_results, Model %in% logmodels)
 #sims_log_results$modelresults1=map(sims_log$data, smap_model_options, y="Value", model=1)
-sims_log_results$modelresults2=map(sims_log$data, smap_model_options, y="Value", model=2)
-sims_log_results$modelresults3=map(sims_log$data, smap_model_options, y="Value", model=3)
-sims_log_results$modelresults4=map(sims_log$data, smap_model_options, y="Value", model=4)
-sims_log_results$modelresults5=map(sims_log$data, smap_model_options, y="Value", model=5)
+sims_log_results$hpar2=future_map(sims_log$data, besthyper, y="Value", ylog=T, pgr="none")
+sims_log_results$hpar3=future_map(sims_log$data, besthyper, y="Value", ylog=F, pgr="fd")
+sims_log_results$hpar4=future_map(sims_log$data, besthyper, y="Value", ylog=F, pgr="gr")
+sims_log_results$hpar5=future_map(sims_log$data, besthyper, y="Value", ylog=T, pgr="gr")
+sims_log_results$modelresults2=map2(sims_log$data, sims_log_results$hpar2, smap_model_options, y="Value", model=2)
+sims_log_results$modelresults3=map2(sims_log$data, sims_log_results$hpar3, smap_model_options, y="Value", model=3)
+sims_log_results$modelresults4=map2(sims_log$data, sims_log_results$hpar4, smap_model_options, y="Value", model=4)
+sims_log_results$modelresults5=map2(sims_log$data, sims_log_results$hpar5, smap_model_options, y="Value", model=5)
 sims_log$R1a=map_dbl(sims_log_results$modelresults1, ~.x$modelstats$R2abund)
 sims_log$R2a=map_dbl(sims_log_results$modelresults2, ~.x$modelstats$R2abund)
 sims_log$R3a=map_dbl(sims_log_results$modelresults3, ~.x$modelstats$R2abund)
 sims_log$R4a=map_dbl(sims_log_results$modelresults4, ~.x$modelstats$R2abund)
 sims_log$R5a=map_dbl(sims_log_results$modelresults5, ~.x$modelstats$R2abund)
-sims_log$bestR2=select(sims_log,R1a,R2a,R3a,R4a,R5a) %>% apply(1,max)
-sims_log_results$bestmodel=select(sims_log,R1a,R2a,R3a,R4a,R5a) %>% apply(1,which.max)
-sims_log_results$modelresultsbest=cbind(select(sims_log_results, modelresults1:modelresults5),sims_log$bestmodel) %>% apply(1, function(x) {m=as.numeric(x["sims_log$bestmodel"]); x[m][[1]]})
+sims_log$bestR2=select(sims_log,R3a,R4a,R5a) %>% apply(1,max)
+sims_log$bestmodel=select(sims_log,R3a,R4a,R5a) %>% apply(1,which.max)
+sims_log_results$bestmodel=select(sims_log,R3a,R4a,R5a) %>% apply(1,which.max)
+sims_log_results$modelresultsbest=cbind(select(sims_log_results, modelresults3, modelresults4, modelresults5),sims_log$bestmodel) %>% apply(1, function(x) {m=as.numeric(x["sims_log$bestmodel"]); x[m][[1]]})
 
 #join log models with others
 sims_results=left_join(sims_results, select(sims_log_results, ID, SimNumber, modelresultsbest, bestmodel), by=c("ID", "SimNumber"))
@@ -127,113 +139,120 @@ sims_d$gle=map_dbl(sims_results$stability, ~.x$gle)
 sims_d$minmean=map_dbl(sims_results$LEshift, ~.x$minmean)
 sims_d$minci=map_dbl(sims_results$LEshift, ~.x$minci)
 
-sims_d$gle_class=ifelse(sims_d$gle>0.01, "chaotic", "not chaotic")
-sims_d$LEshift_class=ifelse(sims_d$LEshift>0.01, "chaotic", "not chaotic")
 
-#
-save(sims_d, sims_results, file = "./data/sims_results_update.Rdata")
+#save results
+save(sims_d, sims_results, sims_log, sims_log_results, file = "./data/sims_results_update.Rdata")
+
+#export E and tau for Bethany
+Eexport=spread(select(sims_d, ID:SimNumber, Ebest), SimNumber, Ebest) %>% 
+  select(ID:TSlength, paste0("Sim.",1:20))
+tauexport=spread(select(sims_d, ID:SimNumber, taubest), SimNumber, taubest) %>% 
+  select(ID:TSlength, paste0("Sim.",1:20))
+write.csv(Eexport,"./data/simsE.csv", row.names = F)
+write.csv(tauexport,"./data/simstau.csv", row.names = F)
+
+#reclass noise level for stochastic ts
+sims_d$NoiseLevel2=ifelse(sims_d$NoiseLevel==0, 0.01, sims_d$NoiseLevel)
+
+#class LEs
+sims_d$gle_class=ifelse(sims_d$gle>0.01, "chaotic", "not chaotic")
+sims_d$LEshift_class=ifelse(sims_d$minci>0.01, "chaotic", "not chaotic")
+sims_d$LEshift_class.05=ifelse(sims_d$minci>0.05, "chaotic", "not chaotic")
+
+sims_summary=sims_d %>% select(-data) %>% 
+  group_by(Classification,NoiseLevel2,TSlength, Model) %>% 
+  summarize(gle_pp=length(which(gle>0.0))/length(gle),
+            gle_pp.01=length(which(gle>0.01))/length(gle),
+            gle_pp.05=length(which(gle>0.05))/length(gle),
+            LEshift_pp=length(which(minci>0))/length(minci),
+            LEshift_pp.01=length(which(minci>0.01))/length(minci),
+            LEshift_pp.05=length(which(minci>0.05))/length(minci))
 
 #plots ####
-ggplot(sims_d, aes(x=Model, y=gle, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel, scales = "free_y") + geom_hline(yintercept = 0) +
-  geom_point(position = position_dodge(0.02)) + theme_bw() + xlabvert
 
-ggplot(sims_d, aes(x=NoiseLevel, y=gle, color=Classification)) +
+#proportions, individual models
+ggplot(sims_summary, aes(x=Model, y=gle_pp.01, fill=Classification)) +
+  facet_grid(TSlength~NoiseLevel2, scales = "free_y") + 
+  geom_bar(stat = "identity") + theme_bw() + xlabvert
+ggplot(sims_summary, aes(x=Model, y=LEshift_pp.01, fill=Classification)) +
+  facet_grid(TSlength~NoiseLevel2, scales = "free_y") + 
+  geom_bar(stat = "identity") + theme_bw() + xlabvert
+ggplot(sims_summary, aes(x=Model, y=LEshift_pp.05, fill=Classification)) +
+  facet_grid(TSlength~NoiseLevel2, scales = "free_y") + 
+  geom_bar(stat = "identity") + theme_bw() + xlabvert
+#different arrangement
+ggplot(sims_summary, aes(x=NoiseLevel2, y=LEshift_pp.01, fill=Classification)) +
+  facet_grid(TSlength~Classification) + 
+  geom_bar(stat = "identity", position = position_dodge2(), show.legend = F) + theme_bw() + xlabvert
+
+
+#plot values
+
+#all models together
+ggplot(sims_d, aes(x=NoiseLevel2, y=gle, color=Classification)) +
   facet_grid(TSlength~., scales = "free_y") + geom_hline(yintercept = 0) +
   geom_point(position = position_dodge(0.05), alpha=0.4) + 
   theme_bw() + xlab("Noise Level") + legalpha
-ggplot(sims_d, aes(x=factor(NoiseLevel), y=gle, fill=Classification)) +
+#violin plots
+ggplot(sims_d, aes(x=factor(NoiseLevel2), y=gle, fill=Classification)) +
   facet_grid(TSlength~., scales = "free_y") + geom_hline(yintercept = 0) +
   geom_violin(position = position_dodge(0.9), scale = "width") + 
   theme_bw() + xlab("Noise Level")
 
+#individual models
+ggplot(sims_d, aes(x=Model, y=gle, color=Classification)) +
+  facet_grid(TSlength~NoiseLevel2, scales = "free_y") + geom_hline(yintercept = 0) +
+  geom_point(position = position_dodge(0.02)) + theme_bw() + xlabvert
+ggplot(sims_d, aes(x=Model, y=minci, color=Classification)) +
+  facet_grid(TSlength~NoiseLevel2, scales = "free_y") + geom_hline(yintercept = 0) +
+  geom_point(position = position_dodge(0.02)) + theme_bw() + xlabvert
+
 #R squared, E, theta
-ggplot(sims_d, aes(x=Model, y=R1a, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel, scales = "free_y") + geom_hline(yintercept = 0) +
+ggplot(sims_d, aes(x=Model, y=R2best, color=Classification)) +
+  facet_grid(TSlength~NoiseLevel2, scales = "free_y") + geom_hline(yintercept = 0) +
   geom_point(position = position_dodge(0.02), alpha=0.3) + theme_bw() + xlabvert + legalpha + ylab("R-squared")
 ggplot(sims_d, aes(x=Model, y=Ebest, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel) + geom_hline(yintercept = 0) +
-  geom_point(position = position_dodge(0.02), alpha=0.3) + theme_bw() + xlabvert + legalpha
-ggplot(sims_d, aes(x=Model, y=thetabest, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel) + geom_hline(yintercept = 0) +
+  facet_grid(TSlength~NoiseLevel2) + geom_hline(yintercept = 0) +
   geom_point(position = position_dodge(0.02), alpha=0.3) + theme_bw() + xlabvert + legalpha
 ggplot(sims_d, aes(x=Model, y=taubest, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel) + geom_hline(yintercept = 0) +
+  facet_grid(TSlength~NoiseLevel2) + geom_hline(yintercept = 0) +
   geom_point(position = position_dodge(0.02), alpha=0.3) + theme_bw() + xlabvert + legalpha
-ggplot(sims_d, aes(x=bestE, y=taubest, size=TSlength, color=NoiseLevel)) +
+ggplot(sims_d, aes(x=Model, y=thetabest, color=Classification)) +
+  facet_grid(TSlength~NoiseLevel2) + geom_hline(yintercept = 0) +
+  geom_point(position = position_dodge(0.02), alpha=0.3) + theme_bw() + xlabvert + legalpha
+#E vs tau
+ggplot(sims_d, aes(x=Ebest, y=taubest, size=TSlength, color=NoiseLevel2)) +
   facet_wrap(Model~., nrow = 3, scales = "free_y") + geom_hline(yintercept = 1) +
   geom_point(alpha=0.5) + #geom_boxplot() + 
   theme_bw() 
 
-#histograms
+#histograms of LE distributions all model
 tslengths=unique(sims_d$TSlength)
 for(i in 1:length(tslengths)) {
-  print(ggplot(filter(sims_d, TSlength==tslengths[i]), aes(x=gle, fill=Classification)) +
-    facet_grid(Classification~NoiseLevel, scales = "free_y") + geom_hline(yintercept = 0) +
-    geom_histogram(boundary = 0, binwidth = 0.1, show.legend = F) + geom_vline(xintercept = 0) +
+  print(ggplot(filter(sims_d, TSlength==tslengths[i]), aes(x=minci, fill=Classification)) +
+    facet_grid(Classification~NoiseLevel2, scales = "free_y") + geom_hline(yintercept = 0) +
+    geom_histogram(boundary = 0.01, binwidth = 0.1, show.legend = F) + geom_vline(xintercept = 0) +
     theme_bw() + ggtitle(paste("TSlength =", tslengths[i])) + xlim(c(-1,1)))
 }
-ggplot(sims_d, aes(x=gle, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel, scales = "free_y") + geom_hline(yintercept = 0) +
-  geom_freqpoly(boundary = 0, binwidth = 0.2, size=1) + geom_vline(xintercept = 0) +
+#freq polygons (not as good)
+ggplot(sims_d, aes(x=minci, color=Classification)) +
+  facet_grid(TSlength~NoiseLevel2, scales = "free_y") + geom_hline(yintercept = 0) +
+  geom_freqpoly(boundary = 0.01, binwidth = 0.1, size=1) + geom_vline(xintercept = 0) +
   theme_bw() + xlim(c(-1,1))
 
 
-sims_summary=sims_d %>% select(-data) %>% 
-  group_by(Classification,NoiseLevel,TSlength, Model) %>% 
-  summarize(gle_pp=length(which(gle>0.0))/length(gle),
-            gle_pp.01=length(which(gle>0.01))/length(gle),
-            gle_pp.05=length(which(gle>0.05))/length(gle),
-            #reg_pp=length(which(LEreg>0))/length(LEreg),
-            LEshift_pp=length(which(LEshift>0))/length(LEshift),
-            LEshift_pp.01=length(which(LEshift>0.01))/length(LEshift),
-            LEshift_pp.05=length(which(LEshift>0.05))/length(LEshift))
-            # LEcombo_pp=length(which(LEcombo>0))/length(LEshift),
-            # LEcombo_pp.01=length(which(LEcombo>0.001))/length(LEshift),
-            # lle_pp=length(which(lle_class=="chaotic"))/length(lle_class))
-
-ggplot(sims_summary, aes(x=Model, y=gle_pp, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel, scales = "free_y") + 
-  geom_bar(stat = "identity") + theme_bw() + xlabvert
-ggplot(sims_summary, aes(x=Model, y=gle_pp.01, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel, scales = "free_y") + 
-  geom_bar(stat = "identity") + theme_bw() + xlabvert
-ggplot(sims_summary, aes(x=Model, y=LEshift_pp, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel, scales = "free_y") + 
-  geom_bar(stat = "identity") + theme_bw() + xlabvert
-ggplot(sims_summary, aes(x=Model, y=LEshift_pp.01, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel, scales = "free_y") + 
-  geom_bar(stat = "identity") + theme_bw() + xlabvert
-ggplot(sims_summary, aes(x=Model, y=LEcombo_pp, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel, scales = "free_y") + 
-  geom_bar(stat = "identity") + theme_bw() + xlabvert
-ggplot(sims_summary, aes(x=Model, y=LEcombo_pp.01, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel, scales = "free_y") + 
-  geom_bar(stat = "identity") + theme_bw() + xlabvert
-ggplot(sims_summary, aes(x=Model, y=reg_pp, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel, scales = "free_y") + geom_hline(yintercept = 0) +
-  geom_bar(position = position_dodge2(), stat = "identity") + theme_bw() + xlabvert
-
-ggplot(sims_summary, aes(x=NoiseLevel, y=gle_pp, fill=Classification)) +
-  facet_grid(TSlength~Classification) + 
-  geom_bar(stat = "identity", position = position_dodge2(), show.legend = F) + theme_bw() + xlabvert
-ggplot(sims_summary, aes(x=NoiseLevel, y=lle_pp, fill=Classification)) +
-  facet_grid(TSlength~Classification) + 
-  geom_bar(stat = "identity", position = position_dodge2(), show.legend = F) + theme_bw() + xlabvert
-ggplot(sims_summary, aes(x=NoiseLevel, y=lle_avg_pp, fill=Classification)) +
-  facet_grid(TSlength~Classification) + 
-  geom_bar(stat = "identity", position = position_dodge2(), show.legend = F) + theme_bw() + xlabvert
-
+#proportion correct classifications
+#LEshift 0.01
 sims_summary2=sims_d %>% select(-data) %>% 
-  group_by(Classification,gle_class,NoiseLevel,TSlength) %>% 
+  group_by(Classification,LEshift_class,NoiseLevel2,TSlength) %>% 
   summarize(n=n()) %>% ungroup() %>% 
-  complete(Classification, nesting(gle_class,NoiseLevel,TSlength), 
+  complete(Classification, nesting(LEshift_class,NoiseLevel2,TSlength), 
            fill=list(n=0)) %>% 
-  group_by(NoiseLevel,TSlength, Classification) %>% 
+  group_by(NoiseLevel2,TSlength, Classification) %>% 
   mutate(proportion=n/sum(n))
 
-ggplot(sims_summary2, aes(x=gle_class, y=Classification, fill=proportion)) +
-  facet_grid(TSlength~NoiseLevel) + 
+ggplot(sims_summary2, aes(x=LEshift_class, y=Classification, fill=proportion)) +
+  facet_grid(TSlength~NoiseLevel2) + 
   geom_tile(stat = "identity") + theme_bw() + 
   geom_text(aes(label=round(proportion,2)), color="white") +
   scale_x_discrete(expand = c(0,0)) +
@@ -241,22 +260,25 @@ ggplot(sims_summary2, aes(x=gle_class, y=Classification, fill=proportion)) +
   ylab("True Dynamics") + xlab("GLE classification") +
   labs(axis.title.x.top = "top")
 
+#LEshift 0.05
 sims_summary3=sims_d %>% select(-data) %>% 
-  group_by(Classification,lle_class,NoiseLevel,TSlength) %>% 
+  group_by(Classification,LEshift_class.05,NoiseLevel2,TSlength) %>% 
   summarize(n=n()) %>% ungroup() %>% 
-  complete(Classification, nesting(lle_class,NoiseLevel,TSlength), 
+  complete(Classification, nesting(LEshift_class.05,NoiseLevel2,TSlength), 
            fill=list(n=0)) %>% 
-  group_by(NoiseLevel,TSlength, Classification) %>% 
+  group_by(NoiseLevel2,TSlength, Classification) %>% 
   mutate(proportion=n/sum(n))
 
-ggplot(sims_summary3, aes(x=lle_class, y=Classification, fill=proportion)) +
-  facet_grid(TSlength~NoiseLevel) + 
+ggplot(sims_summary3, aes(x=LEshift_class.05, y=Classification, fill=proportion)) +
+  facet_grid(TSlength~NoiseLevel2) + 
   geom_tile(stat = "identity") + theme_bw() + 
   geom_text(aes(label=round(proportion,2)), color="white") +
   scale_x_discrete(expand = c(0,0)) +
   scale_y_discrete(expand = c(0,0)) +
-  ylab("True Dynamics") + xlab("LLE (CI) classification") +
+  ylab("True Dynamics") + xlab("GLE classification") +
   labs(axis.title.x.top = "top")
+
+
 
 
 #regression method ####
@@ -272,6 +294,8 @@ ggplot(sims_d, aes(x=Model, y=LEreg, color=Classification)) +
   facet_grid(TSlength~NoiseLevel, scales = "free_y") + geom_hline(yintercept = 0) +
   geom_point() + #geom_boxplot() + 
   theme_bw() + xlabvert
+
+
 
 #testing ####
 ser_or=sims_test[4,]$data[[1]]$Value

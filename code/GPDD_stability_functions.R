@@ -276,11 +276,11 @@ getJacobians=function(modelresults){
       for(i in 1:len) {
         if(all(!is.na(coefs[i,]))) {
           J1<-J2<-J3<-matrix(nrow = ndim, ncol = ndim, 0)
-          diag(J1)<-c(r_x[i], x_obs[((i-1):(i-ndim+1))*tau])
+          diag(J1)<-c(r_x[i], x_obs[i-(1:(ndim-1))*tau])
           #c(r_x[i], lag(x_obs)[i], lag(x_obs,2)[i], lag(x_obs,3)[i], lag(x_obs,4)[i])
           J2[1,]=as.numeric(coefs[i,])
           J2[2:ndim,1:(ndim-1)]=diag(ndim-1)
-          diag(J3)<-1/x_obs[((i-1):(i-ndim))*tau] 
+          diag(J3)<-1/x_obs[i-(1:(ndim))*tau] 
           #c(1/(lag(x_obs)[i]), 1/(lag(x_obs,2)[i]), 1/(lag(x_obs,3)[i]), 1/(lag(x_obs,4)[i]), 1/(lag(x_obs,5)[i]))
           jacobians[,,i]=J1%*%J2%*%J3
         }
@@ -316,11 +316,11 @@ getJacobians=function(modelresults){
       for(i in 1:len) {
         if(all(!is.na(coefs[i,]))) {
           J1<-J2<-J3<-matrix(nrow = ndim, ncol = ndim, 0)
-          diag(J1)<-c(r_x[i]*x_obs[i-tau], x_obs[((i-1):(i-ndim+1))*tau])
+          diag(J1)<-c(r_x[i]*x_obs[i-tau], x_obs[i-(1:(ndim-1))*tau])
           #c(r_x[i]*lag(x_obs)[i], lag(x_obs)[i], lag(x_obs,2)[i], lag(x_obs,3)[i], lag(x_obs,4)[i])
           J2[1,]=as.numeric(coefs[i,])+c(1,rep(0,ndim-1))
           J2[2:ndim,1:(ndim-1)]=diag(ndim-1)
-          diag(J3)<-1/x_obs[((i-1):(i-ndim))*tau] 
+          diag(J3)<-1/x_obs[i-(1:(ndim))*tau] 
           #c(1/(lag(x_obs)[i]), 1/(lag(x_obs,2)[i]), 1/(lag(x_obs,3)[i]), 1/(lag(x_obs,4)[i]), 1/(lag(x_obs,5)[i]))
           jacobians[,,i]=J1%*%J2%*%J3
         }
