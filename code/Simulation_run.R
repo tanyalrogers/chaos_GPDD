@@ -139,6 +139,7 @@ sims_d$gle=map_dbl(sims_results$stability, ~.x$gle)
 sims_d$minmean=map_dbl(sims_results$LEshift, ~.x$minmean)
 sims_d$minci=map_dbl(sims_results$LEshift, ~.x$minci)
 
+<<<<<<< HEAD
 
 #save results
 save(sims_d, sims_results, sims_log, sims_log_results, file = "./data/sims_results_update.Rdata")
@@ -159,6 +160,20 @@ sims_d$gle_class=ifelse(sims_d$gle>0.01, "chaotic", "not chaotic")
 sims_d$LEshift_class=ifelse(sims_d$minci>0.01, "chaotic", "not chaotic")
 sims_d$LEshift_class.05=ifelse(sims_d$minci>0.05, "chaotic", "not chaotic")
 
+=======
+
+#
+save(sims_d, sims_results, sims_log, sims_log_results, file = "./data/sims_results_update.Rdata")
+
+#reclass noise level
+sims_d$NoiseLevel2=ifelse(sims_d$NoiseLevel==0, 0.01, sims_d$NoiseLevel)
+
+#class LEs
+sims_d$gle_class=ifelse(sims_d$gle>0.01, "chaotic", "not chaotic")
+sims_d$LEshift_class=ifelse(sims_d$minci>0.01, "chaotic", "not chaotic")
+sims_d$LEshift_class.05=ifelse(sims_d$minci>0.05, "chaotic", "not chaotic")
+
+>>>>>>> 45d16a215d14231fdca6d76032295b91128aa9ba
 sims_summary=sims_d %>% select(-data) %>% 
   group_by(Classification,NoiseLevel2,TSlength, Model) %>% 
   summarize(gle_pp=length(which(gle>0.0))/length(gle),
