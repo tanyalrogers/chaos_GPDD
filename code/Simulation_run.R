@@ -139,8 +139,6 @@ sims_d$gle=map_dbl(sims_results$stability, ~.x$gle)
 sims_d$minmean=map_dbl(sims_results$LEshift, ~.x$minmean)
 sims_d$minci=map_dbl(sims_results$LEshift, ~.x$minci)
 
-<<<<<<< HEAD
-
 #save results
 save(sims_d, sims_results, sims_log, sims_log_results, file = "./data/sims_results_update.Rdata")
 
@@ -152,6 +150,9 @@ tauexport=spread(select(sims_d, ID:SimNumber, taubest), SimNumber, taubest) %>%
 write.csv(Eexport,"./data/simsE.csv", row.names = F)
 write.csv(tauexport,"./data/simstau.csv", row.names = F)
 
+#load results
+load("./data/sims_results_update.Rdata")
+
 #reclass noise level for stochastic ts
 sims_d$NoiseLevel2=ifelse(sims_d$NoiseLevel==0, 0.01, sims_d$NoiseLevel)
 
@@ -160,20 +161,6 @@ sims_d$gle_class=ifelse(sims_d$gle>0.01, "chaotic", "not chaotic")
 sims_d$LEshift_class=ifelse(sims_d$minci>0.01, "chaotic", "not chaotic")
 sims_d$LEshift_class.05=ifelse(sims_d$minci>0.05, "chaotic", "not chaotic")
 
-=======
-
-#
-save(sims_d, sims_results, sims_log, sims_log_results, file = "./data/sims_results_update.Rdata")
-
-#reclass noise level
-sims_d$NoiseLevel2=ifelse(sims_d$NoiseLevel==0, 0.01, sims_d$NoiseLevel)
-
-#class LEs
-sims_d$gle_class=ifelse(sims_d$gle>0.01, "chaotic", "not chaotic")
-sims_d$LEshift_class=ifelse(sims_d$minci>0.01, "chaotic", "not chaotic")
-sims_d$LEshift_class.05=ifelse(sims_d$minci>0.05, "chaotic", "not chaotic")
-
->>>>>>> 45d16a215d14231fdca6d76032295b91128aa9ba
 sims_summary=sims_d %>% select(-data) %>% 
   group_by(Classification,NoiseLevel2,TSlength, Model) %>% 
   summarize(gle_pp=length(which(gle>0.0))/length(gle),
@@ -217,10 +204,10 @@ ggplot(sims_d, aes(x=factor(NoiseLevel2), y=gle, fill=Classification)) +
 #individual models
 ggplot(sims_d, aes(x=Model, y=gle, color=Classification)) +
   facet_grid(TSlength~NoiseLevel2, scales = "free_y") + geom_hline(yintercept = 0) +
-  geom_point(position = position_dodge(0.02)) + theme_bw() + xlabvert
+  geom_point(position = position_dodge(0.02), alpha=0.3) + theme_bw() + xlabvert
 ggplot(sims_d, aes(x=Model, y=minci, color=Classification)) +
   facet_grid(TSlength~NoiseLevel2, scales = "free_y") + geom_hline(yintercept = 0) +
-  geom_point(position = position_dodge(0.02)) + theme_bw() + xlabvert
+  geom_point(position = position_dodge(0.02), alpha=0.3) + theme_bw() + xlabvert
 
 #R squared, E, theta
 ggplot(sims_d, aes(x=Model, y=R2best, color=Classification)) +

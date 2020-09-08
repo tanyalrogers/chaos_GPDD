@@ -403,7 +403,7 @@ LE1d=function(data, bestmodel, taufix=NULL, y) {
   modelresults=smap_model_options(data=data, y=y, model=bestmodel, Efix=1, taufix=taufix)
   jacobians=getJacobians(modelresults)
   stability=getStability(modelresults, jacobians)
-  return(stability)
+  return(list(modelresults=modelresults, jacobians=jacobians, stability=stability))
 }
 
 # Regression-based LE (Rosenstein method) ***update E and tau selection***
