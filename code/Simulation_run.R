@@ -173,15 +173,13 @@ sims_summary=sims_d %>% select(-data) %>%
 #plots ####
 
 #proportions, individual models
-ggplot(sims_summary, aes(x=Model, y=gle_pp.01, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel2, scales = "free_y") + 
-  geom_bar(stat = "identity") + theme_bw() + xlabvert
+pdf("SimClassLE.pdf", width = 12, height = 7)
 ggplot(sims_summary, aes(x=Model, y=LEshift_pp.01, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel2, scales = "free_y") + 
-  geom_bar(stat = "identity") + theme_bw() + xlabvert
-ggplot(sims_summary, aes(x=Model, y=LEshift_pp.05, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel2, scales = "free_y") + 
-  geom_bar(stat = "identity") + theme_bw() + xlabvert
+  facet_grid(TSlength~NoiseLevel2) + 
+  geom_bar(stat = "identity", color="black") + classic + xlabvert + ylab("Proportion Classified Chaotic") +
+  labs(fill="True\nModel\nDynamics") + 
+  scale_y_continuous(expand = c(0,0)) + scale_x_discrete(expand = c(0,0))
+dev.off()
 #different arrangement
 ggplot(sims_summary, aes(x=NoiseLevel2, y=LEshift_pp.01, fill=Classification)) +
   facet_grid(TSlength~Classification) + 
@@ -255,12 +253,12 @@ sims_summary2=sims_d %>% select(-data) %>%
 
 ggplot(sims_summary2, aes(x=LEshift_class, y=Classification, fill=proportion)) +
   facet_grid(TSlength~NoiseLevel2) + 
-  geom_tile(stat = "identity") + theme_bw() + 
+  geom_tile(stat = "identity") + classic +
   geom_text(aes(label=round(proportion,2)), color="white") +
   scale_x_discrete(expand = c(0,0)) +
   scale_y_discrete(expand = c(0,0)) +
-  ylab("True Dynamics") + xlab("GLE classification") +
-  labs(axis.title.x.top = "top")
+  ylab("True Dynamics") + xlab("Classification") +
+  labs(fill="Proportion") 
 
 #LEshift 0.05
 sims_summary3=sims_d %>% select(-data) %>% 
@@ -273,12 +271,12 @@ sims_summary3=sims_d %>% select(-data) %>%
 
 ggplot(sims_summary3, aes(x=LEshift_class.05, y=Classification, fill=proportion)) +
   facet_grid(TSlength~NoiseLevel2) + 
-  geom_tile(stat = "identity") + theme_bw() + 
+  geom_tile(stat = "identity") + classic + 
   geom_text(aes(label=round(proportion,2)), color="white") +
   scale_x_discrete(expand = c(0,0)) +
   scale_y_discrete(expand = c(0,0)) +
-  ylab("True Dynamics") + xlab("GLE classification") +
-  labs(axis.title.x.top = "top")
+  ylab("True Dynamics") + xlab("Classification") +
+  labs(fill="Proportion")
 
 
 

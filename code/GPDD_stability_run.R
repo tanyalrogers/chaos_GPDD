@@ -79,13 +79,16 @@ gpdd_results$LEshift=map2(gpdd_results$modelresultsbest, gpdd_results$jacobians,
 #LEs of best model
 gpdd_d$gle=map_dbl(gpdd_results$stability, ~.x$gle)
 gpdd_d$minci=map_dbl(gpdd_results$LEshift, ~.x$minci)
+gpdd_d$minmean=map_dbl(gpdd_results$LEshift, ~.x$minmean)
 gpdd_d$lle_pp=map_dbl(gpdd_results$stability, ~.x$lle_pp)
 #LE signs
 gpdd_d$glesign=ifelse(gpdd_d$gle>0.01, "chaotic", "not chaotic")
-gpdd_d$LEshiftsign=ifelse(gpdd_d$minci>0.01, "chaotic", "not chaotic")
+gpdd_d$mincisign=ifelse(gpdd_d$minci>0.01, "chaotic", "not chaotic")
+gpdd_d$minmeansign=ifelse(gpdd_d$minmean>0.01, "chaotic", "not chaotic")
 
 length(which(gpdd_d$gle>0.01))/length(which(!is.na(gpdd_d$gle)))
 length(which(gpdd_d$minci>0.01))/length(which(!is.na(gpdd_d$minci)))
+length(which(gpdd_d$minmean>0.01))/length(which(!is.na(gpdd_d$minmean)))
 
 #predictability
 predthreshold=0.2
@@ -118,8 +121,10 @@ gpdd_d$predictable_ag=ifelse(gpdd_d$predictable=="yes" & gpdd_d$predictable_gr==
 #convert to common timescale
 gpdd_d$gle_mo=gpdd_d$gle/timescale_mo(gpdd_d$SamplingInterval, 1)
 gpdd_d$gle_gen=gpdd_d$gle_mo*gpdd_d$MinAge_mo
-gpdd_d$les_mo=gpdd_d$minci/timescale_mo(gpdd_d$SamplingInterval, 1)
-gpdd_d$les_gen=gpdd_d$les_mo*gpdd_d$MinAge_mo
+gpdd_d$minci_mo=gpdd_d$minci/timescale_mo(gpdd_d$SamplingInterval, 1)
+gpdd_d$minci_gen=gpdd_d$minci_mo*gpdd_d$MinAge_mo
+gpdd_d$minmean_mo=gpdd_d$minci/timescale_mo(gpdd_d$SamplingInterval, 1)
+gpdd_d$minmean_gen=gpdd_d$minmean_mo*gpdd_d$MinAge_mo
 
 # #regression method
 # gpdd_results$regLE=map(gpdd_d$data_rescale, regLE, y="PopRescale")
@@ -138,7 +143,8 @@ gpdd_results$LEshift1d=map2(gpdd_results$modelresults1d, gpdd_results$jacobians1
 
 gpdd_d$gle1d=map_dbl(gpdd_results$LE1d, ~.x$stability$gle)
 gpdd_d$minci1d=map_dbl(gpdd_results$LEshift1d, ~.x$minci)
-gpdd_d$LEshiftsign1d=ifelse(gpdd_d$minci1d>0.01, "chaotic", "not chaotic")
+gpdd_d$minmean1d=map_dbl(gpdd_results$LEshift1d, ~.x$minmean)
+gpdd_d$mincisign1d=ifelse(gpdd_d$minci1d>0.01, "chaotic", "not chaotic")
 
 length(which(gpdd_d$gle1d>0.01))/length(which(!is.na(gpdd_d$gle1d)))
 length(which(gpdd_d$minci1d>0.01))/length(which(!is.na(gpdd_d$minci1d)))
