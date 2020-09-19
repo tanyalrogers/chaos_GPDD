@@ -151,9 +151,105 @@ length(which(gpdd_d$minci1d>0.01))/length(which(!is.na(gpdd_d$minci1d)))
 
 #prediction slope for best model
 
+#use shortened time series ####
+
+gpdd1=select(gpdd_d, MainID:Notes, monotonicR2, data_rescale, bestmodel:minmean_gen) %>% 
+  mutate(tslengthcat="full")
+gpdd2=gpdd1 %>% 
+  mutate(datasetlength=ifelse(datasetlength==30,NA,ifelse(datasetlength/2<=30,30,ceiling(datasetlength/2))),
+         tslengthcat="short") %>% filter(!is.na(datasetlength))
+gpdd3=gpdd2 %>% 
+  mutate(datasetlength=ifelse(datasetlength==30,NA,ifelse(datasetlength/2<=30,30,ceiling(datasetlength/2)))) %>% 
+  filter(!is.na(datasetlength))
+gpdd4=gpdd3 %>% 
+  mutate(datasetlength=ifelse(datasetlength==30,NA,ifelse(datasetlength/2<=30,30,ceiling(datasetlength/2)))) %>% 
+  filter(!is.na(datasetlength))
+gpdd_short=rbind(gpdd2, gpdd3, gpdd4) %>% 
+  mutate(timescale_MinAge=timescale_ratio(SamplingInterval, datasetlength, MinAge_mo),
+         timescale_Lifespan=timescale_ratio(SamplingInterval, datasetlength, Lifespan_mo))
+shortents=function(datasetlength, data) {
+  data[(nrow(data)-datasetlength+1):nrow(data),]
+}
+gpdd_short$data_rescale=map2(gpdd_short$datasetlength, gpdd_short$data_rescale, shortents)
+
+#run models
+gpdd_short_results=select(gpdd_short, MainID, datasetlength)
+#fd-ut
+gpdd_short_results$modelresults3=map(gpdd_short$data_rescale, smap_model_options, y="PopRescale", model=3)
+#gr-ut
+gpdd_short_results$modelresults4=map(gpdd_short$data_rescale, smap_model_options, y="PopRescale", model=4)
+#gr-log
+gpdd_short_results$modelresults5=map(gpdd_short$data_rescale, smap_model_options, y="PopRescale", model=5)
+
+gpdd_short_results$R3m=map_dbl(gpdd_short_results$modelresults3, ~.x$modelstats$R2model)
+gpdd_short_results$R4m=map_dbl(gpdd_short_results$modelresults4, ~.x$modelstats$R2model)
+gpdd_short_results$R5m=map_dbl(gpdd_short_results$modelresults5, ~.x$modelstats$R2model)
+gpdd_short_results$R3a=map_dbl(gpdd_short_results$modelresults3, ~.x$modelstats$R2abund)
+gpdd_short_results$R4a=map_dbl(gpdd_short_results$modelresults4, ~.x$modelstats$R2abund)
+gpdd_short_results$R5a=map_dbl(gpdd_short_results$modelresults5, ~.x$modelstats$R2abund)
+# gpdd_short=cbind(gpdd_short,map_df(gpdd_short$modelresults1, ~.x$modelstats))
+
+#best model
+gpdd_short$bestmodel=select(gpdd_short_results,R3a,R4a,R5a) %>% apply(1,which.max)
+gpdd_short$bestR2=select(gpdd_short_results,R3a,R4a,R5a) %>% apply(1,max)
+gpdd_short$bestR2m=select(gpdd_short_results,R3m,R4m,R5m) %>% apply(1,max)
+gpdd_short_results$modelresultsbest=cbind(select(gpdd_short_results, modelresults3, modelresults4, modelresults5),gpdd_short$bestmodel) %>% apply(1, function(x) {m=as.numeric(x["gpdd_short$bestmodel"]); x[m][[1]]})
+gpdd_short$E=map_dbl(gpdd_short_results$modelresultsbest, ~.x$modelstats$E)
+gpdd_short$tau=map_dbl(gpdd_short_results$modelresultsbest, ~.x$modelstats$tau)
+gpdd_short$theta=map_dbl(gpdd_short_results$modelresultsbest, ~.x$modelstats$theta)
+
+#jacobians and stability of best model
+gpdd_short_results$jacobians=map(gpdd_short_results$modelresultsbest, getJacobians)
+gpdd_short_results$stability=map2(gpdd_short_results$modelresultsbest, gpdd_short_results$jacobians, getStability)
+gpdd_short_results$LEshift=map2(gpdd_short_results$modelresultsbest, gpdd_short_results$jacobians, LEshift)
+
+#LEs of best model
+gpdd_short$gle=map_dbl(gpdd_short_results$stability, ~.x$gle)
+gpdd_short$minci=map_dbl(gpdd_short_results$LEshift, ~.x$minci)
+gpdd_short$minmean=map_dbl(gpdd_short_results$LEshift, ~.x$minmean)
+gpdd_short$lle_pp=map_dbl(gpdd_short_results$stability, ~.x$lle_pp)
+#LE signs
+gpdd_short$glesign=ifelse(gpdd_short$gle>0.01, "chaotic", "not chaotic")
+gpdd_short$mincisign=ifelse(gpdd_short$minci>0.01, "chaotic", "not chaotic")
+gpdd_short$minmeansign=ifelse(gpdd_short$minmean>0.01, "chaotic", "not chaotic")
+#predictability
+predthreshold=0.2
+gpdd_short$predictable=ifelse(gpdd_short$bestR2>predthreshold, "yes","no")
+gpdd_short$predictable_gr=ifelse(gpdd_short$bestR2m>predthreshold, "yes","no")
+gpdd_short$predictable_ag=ifelse(gpdd_short$predictable=="yes" & gpdd_short$predictable_gr=="yes", "ag",
+                             ifelse(gpdd_short$predictable=="yes" & gpdd_short$predictable_gr=="no", "a",
+                                    ifelse(gpdd_short$predictable=="no" & gpdd_short$predictable_gr=="yes", "g", "none")))
+#convert to common timescale
+gpdd_short$gle_mo=gpdd_short$gle/timescale_mo(gpdd_short$SamplingInterval, 1)
+gpdd_short$gle_gen=gpdd_short$gle_mo*gpdd_short$MinAge_mo
+gpdd_short$minci_mo=gpdd_short$minci/timescale_mo(gpdd_short$SamplingInterval, 1)
+gpdd_short$minci_gen=gpdd_short$minci_mo*gpdd_short$MinAge_mo
+gpdd_short$minmean_mo=gpdd_short$minci/timescale_mo(gpdd_short$SamplingInterval, 1)
+gpdd_short$minmean_gen=gpdd_short$minmean_mo*gpdd_short$MinAge_mo
+
+gpdd_combo=rbind(gpdd1,gpdd_short)
+
+#
+
+#save(gpdd_d, gpdd_results, gpdd_combo, file = "./Data/gpdd_results_update.Rdata")
 
 
-save(gpdd_d, gpdd_results, file = "./Data/gpdd_results_update.Rdata")
+#troubleshooting
+
+LEshiftres=NULL
+for(i in 1:nrow(gpdd_short_results)) {
+  LEshiftres[[i]]=LEshift(gpdd_short_results$modelresultsbest[[i]], gpdd_short_results$jacobians[[i]])
+}
+
+#plot a time series
+plotMainID=function(ID) {
+  testplot=filter(gpdd_d, MainID==ID)
+  plot(testplot$data_rescale[[1]]$SeriesStep, testplot$data_rescale[[1]]$PopRescale, 
+       ylab="PopRescale", xlab="SeriesStep", main=paste(ID, testplot$CommonName))
+  lines(testplot$data_rescale[[1]]$SeriesStep, testplot$data_rescale[[1]]$PopRescale)
+}
+plotMainID(9953)
+plotMainID(56)
 
 # #increase threshold
 # predthreshold=0.2

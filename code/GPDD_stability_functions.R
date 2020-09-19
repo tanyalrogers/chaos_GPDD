@@ -479,7 +479,8 @@ LEshift=function(modelresults, jacobians) {
   serlen=max(runlen$lengths[runlen$values==TRUE])
   
   Tminus=3:6
-  LEseg=data.frame(SegLen=(serlen-max(Tminus)):(serlen-min(Tminus)), le_mean=NA, le_sd=NA, le_ci=NA, le_n=NA)
+  LEseg=data.frame(SegLen=(serlen-max(Tminus)):(serlen-min(Tminus)), le_mean=NA, le_sd=NA, le_ci=NA, le_n=NA) %>% 
+    filter(SegLen>0)
   
   for(i in 1:nrow(LEseg)) {
     SegLen=LEseg$SegLen[i]

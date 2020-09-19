@@ -221,20 +221,37 @@ ggplot(gpdd_d, aes(y=log10(MinAge_mo), x=log10(timescale_MinAge), color=Taxonomi
   classic + labs(color="Taxonomic\nClass") + legalpha
 
 #gle vs mass
-ggplot(gpdd_d, aes(y=minci_mo, x=log10(Mass_g), fill=TaxonomicClass2, color=mincisign)) + 
+ggplot(gpdd_d, aes(y=minci_mo, x=log10(Mass_g), color=TaxonomicClass2)) + 
   #facet_grid(predictable_ag~.) +
   #facet_grid(TaxonomicClass2~., scales="free_y") +
   ylab("LE lower bound (per month)") + xlab("log10 Mass (g)") +
-  geom_point(size=2, pch=21, stroke=1.5) +
-  geom_hline(yintercept = 0) + scale_color_manual(values=c("red", "black", NA)) +
-  classic + labs(color="Classification", fill="Taxonomic\nClass")
-ggplot(gpdd_d, aes(y=minci_gen, x=log10(Mass_g), fill=TaxonomicClass2, color=mincisign)) + 
+  geom_point(size=2, alpha=0.5) +
+  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
+  classic + labs(color="Taxonomic\nClass")
+#comparison to Anderson and Gilooly 2020 (positive values only)
+ggplot(filter(gpdd_d, mincisign=="chaotic"), aes(y=log10(minci_mo), x=log10(Mass_g))) + 
+  #facet_grid(TaxonomicClass2~., scales="free_y") +
+  ylab("log10 LE lower bound (per month)") + xlab("log10 Mass (g)") +
+  geom_smooth(method="lm", se = F, color="black") +
+  geom_point(aes(color=TaxonomicClass2), size=2, alpha=0.5) + 
+  classic + labs(color="Taxonomic\nClass") + legalpha
+summary(lm(log10(minci_mo)~log10(Mass_g), data=filter(gpdd_d, mincisign=="chaotic")))
+ggplot(filter(gpdd_d, mincisign=="chaotic"), aes(y=log10(minci_gen), x=log10(Mass_g))) + 
+  #facet_grid(TaxonomicClass2~., scales="free_y") +
+  ylab("log10 LE lower bound (per generation)") + xlab("log10 Mass (g)") +
+  geom_smooth(method="lm", se = F, color="black") +
+  geom_hline(yintercept = log10(0.06), lty=2) +
+  geom_point(aes(color=TaxonomicClass2), size=2, alpha=0.5) + 
+  classic + labs(color="Taxonomic\nClass") + legalpha
+summary(lm(log10(minci_gen)~log10(Mass_g), data=filter(gpdd_d, mincisign=="chaotic")))
+
+ggplot(gpdd_d, aes(y=minci_gen, x=log10(Mass_g), color=TaxonomicClass2)) + 
   #facet_grid(predictable_ag~.) +
   #facet_grid(TaxonomicClass2~., scales="free_y") +
   ylab("LE lower bound (per generation)") + xlab("log10 Mass (g)") +
-  geom_point(size=2, pch=21, stroke=1.5) +
-  geom_hline(yintercept = 0) + scale_color_manual(values=c("red", "black", NA)) +
-  classic + labs(color="Classification", fill="Taxonomic\nClass") + ylim(c(-3,3))
+  geom_point(size=2, alpha=0.5) +
+  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
+  classic + labs(color="Taxonomic\nClass") + ylim(c(-.3,.3)) #ylim(c(-3,3))
 
 #gle by gen time
 ggplot(gpdd_d, aes(y=minci_mo, x=log10(MinAge_mo), color=TaxonomicClass2)) + 
@@ -248,7 +265,7 @@ ggplot(gpdd_d, aes(y=minci_gen, x=log10(MinAge_mo), color=TaxonomicClass2)) +
   ylab("LE lower bound (per generation)") + xlab("log10 Generation Time (months)") + 
   geom_point(size=2, alpha=0.4) +
   geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
-  classic + labs(color="Taxonomic\nClass") + ylim(c(-3,3))
+  classic + labs(color="Taxonomic\nClass") + ylim(c(-.3,.3)) + xlim(c(-2,0))
 #gle by gen time by E
 ggplot(gpdd_d, aes(y=minci_mo, x=log10(MinAge_mo), color=E)) + 
   facet_grid(TaxonomicClass2~., scales="free_y") + 
@@ -293,18 +310,32 @@ ggplot(gpdd_d, aes(y=bestR2, x=log10(timescale_MinAge), color=TaxonomicClass2)) 
   geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
   classic + labs(color="Taxonomic\nClass") + legalpha
 
+#gle by R2
+ggplot(gpdd_d, aes(y=minci, x=bestR2, color=TaxonomicClass2)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  ylab("LE lower bound (per timestep)") + xlab("R-squared") +
+  geom_point(size=2, alpha=0.5) +
+  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
+  classic + labs(color="Taxonomic\nClass")
+ggplot(gpdd_d, aes(y=minci, x=bestR2m, color=TaxonomicClass2)) + 
+  facet_grid(TaxonomicClass2~.) + 
+  ylab("LE lower bound (per timestep)") + xlab("R-squared (growth rate)") +
+  geom_point(size=2, alpha=0.5) +
+  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
+  classic + labs(color="Taxonomic\nClass")
+
 #gle vs monotonic trend
-ggplot(gpdd_d, aes(y=minci, x=monotonicR2, fill=TaxonomicClass2, color=mincisign)) + 
-  #facet_grid(predictable_ag~.) + 
+ggplot(gpdd_d, aes(y=minci, x=monotonicR2, color=TaxonomicClass2)) + 
+  #facet_grid(TaxonomicClass2~.) + 
   ylab("LE lower bound (per timestep)") + xlab("Monotonic trend R-squared") +
-  geom_point(size=2, pch=21, stroke=1.5) +
-  geom_hline(yintercept = 0) + scale_color_manual(values=c("red", "black", NA)) +
+  geom_point(size=2, alpha=0.5) +
+  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
   classic + labs(color="Classification", fill="Taxonomic\nClass")
-ggplot(gpdd_d, aes(y=minci_mo, x=monotonicR2, fill=TaxonomicClass2, color=mincisign)) + 
-  #facet_grid(predictable_ag~.) + 
+ggplot(gpdd_d, aes(y=minci_mo, x=monotonicR2, color=TaxonomicClass2)) + 
+  #facet_grid(TaxonomicClass2~.) + 
   ylab("LE lower bound (per month)") + xlab("Monotonic trend R-squared") +
-  geom_point(size=2, pch=21, stroke=1.5) +
-  geom_hline(yintercept = 0) + scale_color_manual(values=c("red", "black", NA)) +
+  geom_point(size=2, alpha=0.5) +
+  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
   classic + labs(color="Classification", fill="Taxonomic\nClass")
 #ts length vs monotonic trend
 ggplot(gpdd_d, aes(y=monotonicR2, x=log10(timestep_MinAge), color=TaxonomicClass2)) + 
@@ -313,6 +344,19 @@ ggplot(gpdd_d, aes(y=monotonicR2, x=log10(timestep_MinAge), color=TaxonomicClass
   geom_point(size=2, alpha=0.5) +
   geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
   classic + labs(color="Taxonomic\nClass")
+#R2 vs monotonic trend
+ggplot(gpdd_d, aes(y=bestR2, x=monotonicR2, color=E)) + 
+  facet_grid(TaxonomicClass2~.) + 
+  ylab("R-squared") + xlab("Monotonic trend R-squared") +
+  geom_point(size=2, alpha=0.5) +
+  geom_abline(slope = 1, intercept = 0) + scale_color_viridis_c() +
+  classic #+ labs(color="Taxonomic\nClass")
+#E vs monotonic trend
+ggplot(gpdd_d, aes(y=E, x=monotonicR2, color=mincisign)) + 
+  facet_grid(TaxonomicClass2~.) + 
+  ylab("E") + xlab("Monotonic trend R-squared") +
+  geom_point(size=2, alpha=0.5) + #scale_color_viridis_c() +
+  classic + labs(color="Classification")
 
 #gle vs latitude
 ggplot(gpdd_d, aes(y=minci, x=abs(LatDD), fill=TaxonomicClass2, color=mincisign)) + 
@@ -335,6 +379,31 @@ ggplot(gpdd_d, aes(y=minci_gen, x=abs(LatDD), fill=TaxonomicClass2, color=mincis
   classic + labs(color="Classification", fill="Taxonomic\nClass") +
   ylim(c(-3,3))
 
+#gle vs growth rate
+gpdd_d$meangr=map_dbl(gpdd_d$data_rescale, ~mean(.x$PopRescale_gr, na.rm=T))
+gpdd_d$maxgr=map_dbl(gpdd_d$data_rescale, ~max(.x$PopRescale_gr, na.rm=T))
+gpdd_d$maxgr_mo=gpdd_d$maxgr/timescale_mo(gpdd_d$SamplingInterval,1)
+
+ggplot(gpdd_d, aes(y=minci_mo, x=meangr, color=TaxonomicClass2)) + 
+  facet_grid(.~E) +
+  ylab("LE lower bound (per month)") + xlab("Mean growth rate") + 
+  geom_point(size=2, alpha=0.5) +
+  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
+  classic + labs(color="Taxonomic\nClass")
+ggplot(gpdd_d, aes(y=minci_mo, x=maxgr, color=TaxonomicClass2)) + 
+  #facet_grid(.~E) +
+  ylab("LE lower bound (per month)") + xlab("Max growth rate") + 
+  geom_point(size=2, alpha=0.5) +
+  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
+  classic + labs(color="Taxonomic\nClass")
+
+ggplot(gpdd_d, aes(y=log10(maxgr_mo), x=log10(Mass_g), color=mincisign)) + 
+  #facet_grid(.~E) +
+  ylab("log10 Max growth rate (monthly)") + xlab("log10 Mass(g)") + 
+  geom_point(size=2, alpha=0.5) +
+  classic + labs(color="Classification")
+
+
 #resolving tslength vs gen time
 gpdd_d$log10_MinAge_mo_bin=cut(log10(gpdd_d$MinAge_mo), seq(from=-2, to=2.5, by=0.5))
 ggplot(gpdd_d, aes(y=minci_mo, x=log10(timescale_MinAge), color=TaxonomicClass2)) + 
@@ -356,6 +425,103 @@ ggplot(filter(gpdd_d, MinAge_mo %in% c(8,10,12,24)), aes(y=minci_mo, x=timescale
   geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
   classic + labs(color="Taxonomic\nClass")
 
+#results with shortened time series
+ggplot(gpdd_d, aes(y=log10(MinAge_mo), x=log10(timescale_MinAge), color=TaxonomicClass2, group=MainID)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  ylab("log10 Generation time (months)") + xlab("Time Series Length (log10 generations)") + 
+  geom_point(data=gpdd_combo, size=1) + 
+  geom_path(data=gpdd_combo, alpha=0.3) +
+  geom_point(size=2) + 
+  classic + labs(color="Taxonomic\nClass") + legalpha 
+ggplot(gpdd_d, aes(y=log10(MinAge_mo), x=log10(timescale_MinAge), color=mincisign, group=MainID)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  ylab("log10 Generation time (months)") + xlab("Time Series Length (log10 generations)") + 
+  geom_point(data=gpdd_combo, size=1) + 
+  geom_path(data=gpdd_combo, alpha=0.3, color="gray") +
+  geom_point(size=2) + 
+  classic + labs(color="Classification") + legalpha 
+ggplot(gpdd_d, aes(y=E, x=log10(timescale_MinAge), color=log10(MinAge_mo), group=MainID)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  ylab("E") + xlab("Time Series Length (log10 generations)") + 
+  geom_point(data=gpdd_combo, size=1) + 
+  geom_path(data=gpdd_combo, alpha=0.3) +
+  geom_point(size=2) + 
+  classic + labs(color="log10\nGeneration\ntime (months)") + scale_color_viridis_c()
+ggplot(gpdd_d, aes(y=minci_mo, x=log10(timescale_MinAge), color=E, group=MainID)) + 
+  facet_grid(TaxonomicClass2~.) + 
+  ylab("LE lower bound (per month)") + xlab("Time Series Length (log10 generations)") + 
+  geom_hline(yintercept = 0) +
+  geom_point(data=gpdd_combo, size=1, alpha=0.7) + 
+  geom_path(data=gpdd_combo, alpha=0.3, color="gray") +
+  geom_point(size=2, alpha=0.7) + 
+  classic + labs(color="E") + scale_color_viridis_c()
+ggplot(gpdd_d, aes(y=minci_mo, x=log10(timescale_MinAge), color=log10(MinAge_mo), group=MainID)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  ylab("LE lower bound (per month)") + xlab("Time Series Length (log10 generations)") + 
+  geom_hline(yintercept = 0) +
+  geom_point(data=gpdd_combo, size=1, alpha=0.7) + 
+  geom_path(data=gpdd_combo, alpha=0.3) +
+  geom_point(size=2, alpha=0.7) + 
+  classic + labs(color="log10\nGeneration\ntime (months)") + scale_color_viridis_c()
+ggplot(gpdd_d, aes(y=minci_mo, x=log10(MinAge_mo), color=log10(timescale_MinAge), group=MainID)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  ylab("LE lower bound (per month)") + xlab("log10 Generation time (months)") + 
+  geom_hline(yintercept = 0) +
+  geom_point(data=gpdd_combo, size=1, alpha=0.7) + 
+  geom_path(data=gpdd_combo, alpha=0.3, color="gray") +
+  geom_point(size=2, alpha=0.7) + 
+  classic + labs(color="Time Series Length\n(log10 generations)") + scale_color_viridis_c()
+
+#select some individual series
+gpdd_sub=arrange(gpdd_d, TaxonomicClass2, desc(datasetlength)) %>% 
+  group_by(TaxonomicClass2)  %>% 
+  slice(1:5)
+gpdd_combo_sub=filter(gpdd_combo, MainID %in% unique(gpdd_sub$MainID))
+
+#select only chaotic series
+gpdd_sub=filter(gpdd_d, mincisign=="chaotic" & datasetlength>30 & !is.na(timescale_MinAge)) %>% arrange(desc(timescale_MinAge))
+gpdd_combo_sub=filter(gpdd_combo, MainID %in% unique(gpdd_sub$MainID))
+
+ggplot(gpdd_sub, aes(y=factor(MainID, levels = unique(gpdd_sub$MainID)), x=timescale_MinAge, fill=mincisign, group=MainID)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  ylab("MainID") + xlab("Time series length (generations)") + 
+  geom_path(data=gpdd_combo_sub, size=2, aes(color=MinAge_mo)) +
+  geom_point(data=gpdd_combo_sub, pch=21, size=2) + 
+  geom_point(size=2, pch=21, aes(fill=mincisign)) + scale_x_log10(breaks=c(1,10,100,1000,10000)) +
+  classic + scale_color_viridis_c(trans="log10")+ labs(fill="Classification", color="Generation\ntime (months)")  
+
+ggplot(gpdd_sub, aes(y=E, x=log10(timescale_MinAge), color=log10(MinAge_mo), group=MainID)) + 
+  facet_grid(TaxonomicClass2~.) + 
+  ylab("E") + xlab("Time Series Length (log10 generations)") + 
+  #geom_point(data=gpdd_combo_sub, size=1) + 
+  geom_path(data=gpdd_combo_sub, alpha=0.7) +
+  geom_point(size=2) + 
+  classic + labs(color="log10\nGeneration\ntime (months)") + scale_color_viridis_c()
+ggplot(gpdd_sub, aes(y=minci_mo, x=log10(timescale_MinAge), color=log10(MinAge_mo), group=MainID)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  ylab("LE lower bound (per month)") + xlab("Time Series Length (log10 generations)") + 
+  geom_hline(yintercept = 0) +
+  #geom_point(data=gpdd_combo_sub, size=1, alpha=0.7) + 
+  geom_path(data=gpdd_combo_sub, alpha=0.7) +
+  geom_point(size=2, alpha=0.7) + 
+  classic + labs(color="log10\nGeneration\ntime (months)") + scale_color_viridis_c()
+
+ggplot(gpdd_d, aes(y=minci_mo, x=log10(timescale_MinAge), color=log10(MinAge_mo), group=MainID)) + 
+  facet_grid(TaxonomicClass2~.) + 
+  ylab("LE lower bound (per month)") + xlab("Time Series Length (log10 generations)") + 
+  geom_hline(yintercept = 0) +
+  #geom_point(data=gpdd_combo, size=1, alpha=0.7) + 
+  geom_path(data=gpdd_combo, alpha=0.7) +
+  geom_point(size=2, alpha=0.7) + 
+  classic + labs(color="log10\nGeneration\ntime (months)") + scale_color_viridis_c()
+ggplot(gpdd_d, aes(y=minci_mo, x=datasetlength, color=log10(MinAge_mo), group=MainID)) + 
+  facet_grid(TaxonomicClass2~.) + 
+  ylab("LE lower bound (per month)") + xlab("Time Series Length (timesteps)") + 
+  geom_hline(yintercept = 0) +
+  geom_point(data=gpdd_combo, size=1, alpha=0.2) + 
+  geom_path(data=gpdd_combo, alpha=0.2) +
+  geom_point(size=2, alpha=0.7) + 
+  classic + labs(color="log10\nGeneration\ntime (months)") + scale_color_viridis_c()
 
 #linear models ####
 m1=lm(minci_mo~E*log10(MinAge_mo), data=gpdd_d)
@@ -364,6 +530,8 @@ m1=lm(minci_mo~E*log10(timescale_MinAge)+TaxonomicClass2, data=filter(gpdd_d, Ta
 m1=lm(minci_mo~E*log10(timescale_MinAge)*TaxonomicClass2, data=filter(gpdd_d, TaxonomicClass2!="Other"))
 summary(m1)
 anova(m1)
+
+
 
 library(lme4)
 library(car)
