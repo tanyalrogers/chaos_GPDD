@@ -126,11 +126,6 @@ gpdd_d$minci_gen=gpdd_d$minci_mo*gpdd_d$MinAge_mo
 gpdd_d$minmean_mo=gpdd_d$minci/timescale_mo(gpdd_d$SamplingInterval, 1)
 gpdd_d$minmean_gen=gpdd_d$minmean_mo*gpdd_d$MinAge_mo
 
-# #regression method
-# gpdd_results$regLE=map(gpdd_d$data_rescale, regLE, y="PopRescale")
-# gpdd_d$LEreg=map_dbl(gpdd_results$regLE, ~.x$LEreg)
-# gpdd_d$LEreg_se=map_dbl(gpdd_results$regLE, ~.x$LEreg_se)
-
 #fix E to 1 for best model
 #tau unconstrained
 gpdd_results$LE1d=map2(gpdd_d$data_rescale, gpdd_d$bestmodel+2, LE1d, y="PopRescale")
@@ -233,6 +228,10 @@ gpdd_combo=rbind(gpdd1,gpdd_short)
 
 #save(gpdd_d, gpdd_results, gpdd_combo, file = "./Data/gpdd_results_update.Rdata")
 
+# #regression method
+# gpdd_results$regLE=map2(gpdd_d$data_rescale, gpdd_results$modelresultsbest, regLE, y="PopRescale")
+# gpdd_d$LEreg=map_dbl(gpdd_results$regLE, ~.x$LEreg)
+# gpdd_d$LEreg_se=map_dbl(gpdd_results$regLE, ~.x$LEreg_se)
 
 #troubleshooting
 

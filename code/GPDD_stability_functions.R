@@ -407,21 +407,17 @@ LE1d=function(data, bestmodel, taufix=NULL, y) {
 }
 
 # Regression-based LE (Rosenstein method) ***update E and tau selection***
-regLE=function(data, y) {
+regLE=function(data, modelresults, y) {
   #recompute bestE with simplex
   ser=data[,y]
-  len=rle(!is.na(ser))
-  serlen=max(len$lengths[len$values==TRUE])
-  Emax=min(10,round(sqrt(serlen),0))
-  simplex_results=simplex(ser, tau=1, tp=1, E=1:Emax, silent = T)
-  bestE=simplex_results$E[which.min(simplex_results$rmse)]
+  bestE=modelresults$modelstats$E #dimension
+  tau=modelresults$modelstats$tau #tau
   
-  xi=make_block(ser, max_lag = bestE, tau=1)[-(1:(bestE-1)),-1] #generate E lags
+  xi=make_block(ser, max_lag = bestE, tau=tau)[-(1:((bestE-1)*tau)),-1] #generate E lags
   if(bestE==1) {ni=length(xi)} else {ni=nrow(xi)}
   navals=which(!complete.cases(xi))
   rownames(xi)=NULL
   if(bestE==1) {xi[navals]=NA} else {xi[navals,]=NA}
-  
   
   #distij=as.matrix(dist(xi))+10000*diag(ni) 
   distij=as.matrix(dist(xi)) #distance matrix

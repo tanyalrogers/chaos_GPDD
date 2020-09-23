@@ -6,8 +6,8 @@ library("tidyr")
 library("rEDM")
 library("purrr")
 
+source("./code/ggplot themes rogers.R")
 load(file = "./data/gpdd_results_update.Rdata")
-source("~/GRAD SCHOOL/R reference/ggplot themes rogers.R")
 
 #general stats
 
