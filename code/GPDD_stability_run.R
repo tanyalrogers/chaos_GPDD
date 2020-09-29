@@ -225,6 +225,8 @@ gpdd_short$minmean_gen=gpdd_short$minmean_mo*gpdd_short$MinAge_mo
 gpdd_combo=rbind(gpdd1,gpdd_short)
 
 #
+exportEtau=select(gpdd_d, MainID, E, tau)
+write.csv(exportEtau, "./data/empiricalEtau_smap.csv", row.names = F)
 
 #save(gpdd_d, gpdd_results, gpdd_combo, file = "./Data/gpdd_results_update.Rdata")
 

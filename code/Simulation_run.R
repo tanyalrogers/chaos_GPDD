@@ -10,6 +10,9 @@ library("furrr")
 source("./code/GPDD_stability_functions.R")
 source("./code/ggplot themes rogers.R")
 
+#to run in parallel
+plan(multisession, workers = 4)
+
 #plot timeseries ####
 sims_plot=filter(sims_d, SimNumber=="Sim.3" & TSlength==50 & NoiseLevel==0.3)
 par(mfrow=c(2,3))
@@ -51,8 +54,10 @@ save(sims_d,  file = "./data/sims_results_knownEtau.Rdata")
 #test with known dynamics ####
 sims=read.csv("./data/ChaosMetaAnalysisSimulatedDataCORRECTED3.csv")
 sims$Classification=recode(sims$Classification, Periodic="periodic")
-sims_d=select(sims, ID, Model, TimeStep, NoiseLevel, Classification, Sim.11:Sim.20) %>% 
-  gather(SimNumber, Value, Sim.11:Sim.20) %>% 
+
+#first 20 reps
+sims_d=select(sims, ID, Model, TimeStep, NoiseLevel, Classification, Sim.1:Sim.20) %>% 
+  gather(SimNumber, Value, Sim.1:Sim.20) %>% 
   group_by(ID,Model,Classification,NoiseLevel,SimNumber) %>%  mutate(TSlength=length(Value)) %>% ungroup() %>% 
   group_by(ID,Model,Classification,NoiseLevel,TSlength,SimNumber) %>% nest() %>% 
   mutate(data=map(data, as.data.frame)) %>% ungroup()
@@ -60,37 +65,21 @@ sims_d=select(sims, ID, Model, TimeStep, NoiseLevel, Classification, Sim.11:Sim.
 modelorder=unique(arrange(sims_d, Classification, Model)$Model)
 sims_d$Model=factor(sims_d$Model, levels=modelorder)
 
-#results
+#set up results df
 sims_results=select(sims_d, ID, SimNumber, Model)
 
-plan(multisession, workers = 4)
-#smap (model 1)
-start=Sys.time()
+#get hyperparameters (this take a long time)
 sims_results$hpar1=future_map(sims_d$data, besthyper, y="Value", ylog=F, pgr="none")
-end=Sys.time()
-end-start
+#get model output
 sims_results$modelresults1=map2(sims_d$data, sims_results$hpar1, smap_model_options, y="Value", model=1)
-#sims_results$modelresults3=future_map(sims_d$data, smap_model_options, y="Value", model=3)
+#get R2
 sims_d$R1a=map_dbl(sims_results$modelresults1, ~.x$modelstats$R2abund)
-#sims_d$R3a=map_dbl(sims_results$modelresults3, ~.x$modelstats$R2abund)
-# sims_results$modelresults1=pmap(list(sims_d$data, Efix=sims_d$E, taufix=sims_d$Tau), smap_model_options, y="Value", model=1)
-# sims_results$modelresults1=pmap(list(sims_d$data, taufix=sims_d$Tau), smap_model_options, y="Value", model=1)
-#temp
-#sims_results$modelresultsbest=sims_results$modelresults1
 
-sims_d_hold=rbind(sims_d_hold, sims_d)
-sims_results_hold=rbind(sims_results_hold, sims_results)
-
-save(sims_d_hold, sims_results_hold, file = "./data/sims_results_hold.Rdata")
-
-sims_d=sims_d_hold
-sims_results=sims_results_hold
-
-#smap (model 2-5) #1 and 3 are same R2, 2 and 4 are same R2
+#fit alt models for strictly positive data
+# #1 and 3 are same, 2 and 4 are same
 logmodels=c("PredatorPreyPeriodic", "PredatorPreyChaotic", "HostParParPeriodic", "HostParParChaotic")
 sims_log=filter(sims_d, Model %in% logmodels)
 sims_log_results=filter(sims_results, Model %in% logmodels)
-#sims_log_results$modelresults1=map(sims_log$data, smap_model_options, y="Value", model=1)
 sims_log_results$hpar2=future_map(sims_log$data, besthyper, y="Value", ylog=T, pgr="none")
 sims_log_results$hpar3=future_map(sims_log$data, besthyper, y="Value", ylog=F, pgr="fd")
 sims_log_results$hpar4=future_map(sims_log$data, besthyper, y="Value", ylog=F, pgr="gr")
@@ -115,7 +104,7 @@ sims_results$modelresultsbest=ifelse(sims_d$Model %in% logmodels,
                                      sims_results$modelresultsbest, 
                                      sims_results$modelresults1)
 
-#stability
+#get stability
 sims_results$jacobians=map(sims_results$modelresultsbest, getJacobians)
 sims_results$stability=map2(sims_results$modelresultsbest, sims_results$jacobians, getStability)
 sims_results$LEshift=map2(sims_results$modelresultsbest, sims_results$jacobians, LEshift)
@@ -129,31 +118,116 @@ sims_d$gle=map_dbl(sims_results$stability, ~.x$gle)
 sims_d$minmean=map_dbl(sims_results$LEshift, ~.x$minmean)
 sims_d$minci=map_dbl(sims_results$LEshift, ~.x$minci)
 
-#save results
-save(sims_d, sims_results, sims_log, sims_log_results, file = "./data/sims_results_update.Rdata")
+#remaining reps ####
+#21-50
+sims2_d=select(sims, ID, Model, TimeStep, NoiseLevel, Classification, Sim.21:Sim.50) %>% 
+  gather(SimNumber, Value, Sim.21:Sim.50) %>% 
+  group_by(ID,Model,Classification,NoiseLevel,SimNumber) %>%  mutate(TSlength=length(Value)) %>% ungroup() %>% 
+  group_by(ID,Model,Classification,NoiseLevel,TSlength,SimNumber) %>% nest() %>% 
+  mutate(data=map(data, as.data.frame)) %>% ungroup()
+modelorder=unique(arrange(sims2_d, Classification, Model)$Model)
+sims2_d$Model=factor(sims2_d$Model, levels=modelorder)
+#set up results df
+sims2_results=select(sims2_d, ID, SimNumber, Model)
+#get hyperparameters (this take a long time)
+start=Sys.time()
+sims2_results$hpar1=future_map(sims2_d$data, besthyper, y="Value", ylog=F, pgr="none")
+end=Sys.time(); end-start
+#get model output
+sims2_results$modelresults1=map2(sims2_d$data, sims2_results$hpar1, smap_model_options, y="Value", model=1)
+#get R2
+sims2_d$R1a=map_dbl(sims2_results$modelresults1, ~.x$modelstats$R2abund)
 
-#export E and tau for Bethany
-Eexport=spread(select(sims_d, ID:SimNumber, Ebest), SimNumber, Ebest) %>% 
-  select(ID:TSlength, paste0("Sim.",1:20))
-tauexport=spread(select(sims_d, ID:SimNumber, taubest), SimNumber, taubest) %>% 
-  select(ID:TSlength, paste0("Sim.",1:20))
-write.csv(Eexport,"./data/simsE.csv", row.names = F)
-write.csv(tauexport,"./data/simstau.csv", row.names = F)
+sims2_d_hold=sims2_d
+sims2_results_hold=sims2_results
 
+save(sims2_d_hold, sims2_results_hold, file = "./data/sims2_results_hold.Rdata")
+
+#50-100
+sims2_d=select(sims, ID, Model, TimeStep, NoiseLevel, Classification, Sim.51:Sim.100) %>% 
+  gather(SimNumber, Value, Sim.51:Sim.100) %>% 
+  group_by(ID,Model,Classification,NoiseLevel,SimNumber) %>%  mutate(TSlength=length(Value)) %>% ungroup() %>% 
+  group_by(ID,Model,Classification,NoiseLevel,TSlength,SimNumber) %>% nest() %>% 
+  mutate(data=map(data, as.data.frame)) %>% ungroup()
+modelorder=unique(arrange(sims2_d, Classification, Model)$Model)
+sims2_d$Model=factor(sims2_d$Model, levels=modelorder)
+#set up results df
+sims2_results=select(sims2_d, ID, SimNumber, Model)
+#get hyperparameters (this take a long time)
+start=Sys.time()
+sims2_results$hpar1=future_map(sims2_d$data, besthyper, y="Value", ylog=F, pgr="none")
+end=Sys.time(); end-start
+#get model output
+sims2_results$modelresults1=map2(sims2_d$data, sims2_results$hpar1, smap_model_options, y="Value", model=1)
+#get R2
+sims2_d$R1a=map_dbl(sims2_results$modelresults1, ~.x$modelstats$R2abund)
+
+sims2_d_hold=rbind(sims2_d_hold, sims2_d)
+sims2_results_hold=rbind(sims2_results_hold, sims2_results)
+
+save(sims2_d_hold, sims2_results_hold, file = "./data/sims2_results_hold.Rdata")
+
+sims2_d=sims2_d_hold
+sims2_results=sims2_results_hold
+
+#fit alt models for strictly positive data
+# #1 and 3 are same, 2 and 4 are same
+logmodels=c("PredatorPreyPeriodic", "PredatorPreyChaotic", "HostParParPeriodic", "HostParParChaotic")
+sims2_log=filter(sims2_d, Model %in% logmodels)
+sims2_log_results=filter(sims2_results, Model %in% logmodels)
+sims2_log_results$hpar4=future_map(sims2_log$data, besthyper, y="Value", ylog=F, pgr="gr")
+sims2_log_results$hpar5=future_map(sims2_log$data, besthyper, y="Value", ylog=T, pgr="gr")
+sims2_log_results$modelresults4=map2(sims2_log$data, sims2_log_results$hpar4, smap_model_options, y="Value", model=4)
+sims2_log_results$modelresults5=map2(sims2_log$data, sims2_log_results$hpar5, smap_model_options, y="Value", model=5)
+sims2_log$R1a=map_dbl(sims2_log_results$modelresults1, ~.x$modelstats$R2abund)
+sims2_log$R4a=map_dbl(sims2_log_results$modelresults4, ~.x$modelstats$R2abund)
+sims2_log$R5a=map_dbl(sims2_log_results$modelresults5, ~.x$modelstats$R2abund)
+sims2_log$bestR2=select(sims2_log,R1a,R4a,R5a) %>% apply(1,max)
+sims2_log$bestmodel=select(sims2_log,R1a,R4a,R5a) %>% apply(1,which.max)
+sims2_log_results$bestmodel=select(sims2_log,R1a,R4a,R5a) %>% apply(1,which.max)
+sims2_log_results$modelresultsbest=cbind(select(sims2_log_results, modelresults1, modelresults4, modelresults5),sims2_log$bestmodel) %>% apply(1, function(x) {m=as.numeric(x["sims2_log$bestmodel"]); x[m][[1]]})
+
+#join log models with others
+sims2_results=left_join(sims2_results, select(sims2_log_results, ID, SimNumber, modelresultsbest, bestmodel), by=c("ID", "SimNumber"))
+sims2_results$modelresultsbest=ifelse(sims2_d$Model %in% logmodels,
+                                     sims2_results$modelresultsbest, 
+                                     sims2_results$modelresults1)
+
+#get stability
+sims2_results$jacobians=map(sims2_results$modelresultsbest, getJacobians)
+sims2_results$stability=map2(sims2_results$modelresultsbest, sims2_results$jacobians, getStability)
+sims2_results$LEshift=map2(sims2_results$modelresultsbest, sims2_results$jacobians, LEshift)
+
+#pull results
+sims2_d$Ebest=map_dbl(sims2_results$modelresultsbest, ~.x$modelstats$E)
+sims2_d$taubest=map_dbl(sims2_results$modelresultsbest, ~.x$modelstats$tau)
+sims2_d$thetabest=map_dbl(sims2_results$modelresultsbest, ~.x$modelstats$theta)
+sims2_d$R2best=map_dbl(sims2_results$modelresultsbest, ~.x$modelstats$R2abund)
+sims2_d$gle=map_dbl(sims2_results$stability, ~.x$gle)
+sims2_d$minmean=map_dbl(sims2_results$LEshift, ~.x$minmean)
+sims2_d$minci=map_dbl(sims2_results$LEshift, ~.x$minci)
+
+#join with first 20 reps
+sims_d=rbind(sims_d, sims2_d)
+sims_results=rbind(sims_results, sims2_results)
 
 #regression method ####
 sims_results$regLE=map2(sims_d$data, sims_results$modelresultsbest, regLE, y="Value")
 sims_d$LEreg=map_dbl(sims_results$regLE, ~.x$LEreg)
 sims_d$LEreg_se=map_dbl(sims_results$regLE, ~.x$LEreg_se)
 
-ggplot(sims_d, aes(x=NoiseLevel, y=LEreg, color=Classification)) +
-  facet_grid(TSlength~.) + geom_hline(yintercept = 0) +
-  geom_point(position = position_dodge(0.02)) + theme_bw()
+#save results
+#save(sims_d, sims_results, sims_log, sims_log_results, file = "./data/sims_results_update.Rdata")
 
-ggplot(sims_d, aes(x=Model, y=LEreg, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel, scales = "free_y") + geom_hline(yintercept = 0) +
-  geom_point() + #geom_boxplot() + 
-  theme_bw() + xlabvert
+#export E and tau for Bethany
+Eexport=spread(select(sims_d, ID:SimNumber, Ebest), SimNumber, Ebest) %>% 
+  select(ID:TSlength, paste0("Sim.",1:100))
+tauexport=spread(select(sims_d, ID:SimNumber, taubest), SimNumber, taubest) %>% 
+  select(ID:TSlength, paste0("Sim.",1:100))
+write.csv(Eexport,"./data/simsE.csv", row.names = F)
+write.csv(tauexport,"./data/simstau.csv", row.names = F)
+
+
 
 
 #testing ####

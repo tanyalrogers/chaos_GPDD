@@ -5,6 +5,7 @@ library("dplyr")
 library("tidyr")
 library("rEDM")
 library("purrr")
+library(cowplot)
 
 source("./code/ggplot themes rogers.R")
 load(file = "./data/gpdd_results_update.Rdata")
@@ -13,20 +14,21 @@ load(file = "./data/gpdd_results_update.Rdata")
 
 #number of distinct taxa (140)
 n_distinct(gpdd_d$TaxonID)
-#gles estimated (171)
-length(which(!is.na(gpdd_d$gle)))
-#prop pos gles 
-length(which(gpdd_d$gle>0.01))/length(which(!is.na(gpdd_d$gle)))
-#prop pos gles 1d 
-length(which(gpdd_d$gle1d>0.01))/length(which(!is.na(gpdd_d$gle1d)))
-#prop pos minci
+#gles estimated (177)
+length(which(!is.na(gpdd_d$minci)))
+#prop pos le
 length(which(gpdd_d$minci>0.01))/length(which(!is.na(gpdd_d$minci)))
-#prop pos minci 1d
+#prop pos le 1d
 length(which(gpdd_d$minci1d>0.01))/length(which(!is.na(gpdd_d$minci1d)))
+# old gle estimates
+# #prop pos gles 
+# length(which(gpdd_d$gle>0.01))/length(which(!is.na(gpdd_d$gle)))
+# #prop pos gles 1d 
+# length(which(gpdd_d$gle1d>0.01))/length(which(!is.na(gpdd_d$gle1d)))
 
-#prop with any pos lle 
+#prop with any pos local le 
 length(which(gpdd_d$lle_pp>0))/length(which(!is.na(gpdd_d$lle_pp)))
-#prop with at least 0.5 pos lle 
+#prop with at least 0.5 pos local le 
 length(which(gpdd_d$lle_pp>0.5))/length(which(!is.na(gpdd_d$lle_pp)))
 
 # #gles are correlated, although some outliers
@@ -41,37 +43,35 @@ length(which(gpdd_d$lle_pp>0.5))/length(which(!is.na(gpdd_d$lle_pp)))
 plot(minci~gle, data=gpdd_d, xlim=c(-1,1), ylim=c(-1,1))
 abline(a = 0, b = 1); abline(h=0); abline(v=0)
 
-#GLE vs. LLE prop positive
+#LE vs. LLE prop positive
 ggplot(gpdd_d, aes(x=lle_pp, fill=glesign)) + 
-  #facet_grid(predictable_ag~.) + 
   geom_histogram(boundary = 0, binwidth = 0.05) + classic
 ggplot(gpdd_d, aes(x=lle_pp, fill=mincisign)) + 
-  #facet_grid(predictable_ag~.) + 
   geom_histogram(boundary = 0, binwidth = 0.05) + classic
 
 #reliability seems to be unrelated to predictability
 table(gpdd_d$Reliability, gpdd_d$predictable_ag)
 plot(gpdd_d$Reliability, gpdd_d$bestR2, ylim=c(-1,1))
 
-#classifications by taxon (predictability)
+#classifications by taxon (predictability) #####
+signcountsnd=aggregate(minci~mincisign*TaxonomicClass2, data=gpdd_d, FUN=length) %>% 
+  mutate(mincisign2=ifelse(mincisign=="not chaotic", minci*-1,minci), Econ="Free E") %>% 
+  group_by(TaxonomicClass2) %>%  mutate(signprop=minci/sum(minci))
+
 signcountsnd=aggregate(minci~mincisign*TaxonomicClass2*predictable_ag, data=gpdd_d, FUN=length) %>% 
   mutate(mincisign2=ifelse(mincisign=="not chaotic", minci*-1,minci), Econ="Free E")
 signcounts1d=aggregate(minci1d~mincisign1d*TaxonomicClass2*predictable_ag, data=gpdd_d, FUN=length) %>% 
   mutate(mincisign1d2=ifelse(mincisign1d=="not chaotic", minci1d*-1,minci1d), Econ="E = 1")
-colnames(signcounts1d)<-colnames(signcounts)
+colnames(signcounts1d)<-colnames(signcountsnd)
 signcounts=rbind(signcountsnd,signcounts1d); signcounts$Econ=factor(signcounts$Econ, levels=unique(signcounts$Econ))
 ggplot(signcounts, aes(x=TaxonomicClass2, y=mincisign2)) + 
   #facet_grid(predictable_ag~., scales = "free_y") + #geom_jitter(alpha=0.5, size=3, height = 0, width = 0.1) +
-  facet_grid(.~Econ) + 
+  facet_grid(.~Econ) + ylim(c(-60,20)) +
   geom_bar(aes(fill=mincisign), stat = "identity") +
   geom_hline(yintercept = 0)  + classic + xlabvert + ylab("Count") +
-  labs(fill="Classification", x="Taxonomic Class") + removefacetbackground
-# #compare to 1d
-# ggplot(signcounts1d, aes(x=TaxonomicClass2, y=mincisign1d2)) + 
-#   #facet_grid(predictable_ag~., scales = "free_y") + #geom_jitter(alpha=0.5, size=3, height = 0, width = 0.1) +
-#   geom_bar(aes(fill=mincisign1d), stat = "identity") +
-#   geom_hline(yintercept = 0)  + classic + xlabvert + ylab("Count") + ylim(c(-60,20)) +
-#   labs(fill="Classification", x="Taxonomic Class", title="E = 1")
+  labs(fill="Classification", x="Taxonomic Class") + removefacetbackground +
+  scale_fill_brewer(palette = "Paired", direction = -1)
+ggsave("./figures/classification.png", height = 3.5, width = 5)
 
 #classifications by E
 signcountsE=aggregate(minci~mincisign*E*TaxonomicClass2, data=gpdd_d, FUN=length) %>% 
@@ -92,12 +92,13 @@ ggplot(signcountsE, aes(x=factor(E), y=signprop)) +
   classic + ylab("Proportion") + scale_y_continuous(expand = expand_scale(mult = c(0, 0))) +
   labs(fill="Classification", x="E") 
 
-#gle vs gle1d
-ggplot(filter(gpdd_d, E>1), aes(y=minci1d, x=minci, color=E)) + 
+#gle vs gle1d ####
+ggplot(filter(gpdd_d, E>1), aes(y=minci1d, x=minci, fill=factor(E))) + 
   #facet_grid(predictable_ag~.) + 
-  geom_point(size=2,stroke=1.5) +
-  geom_hline(yintercept = 0) + geom_vline(xintercept = 0) +
-  classic + labs(x="LE lower bound - Free E", y="LE lower bound - E = 1", color="Free E")
+  geom_point(size=3, pch=21, color="black", alpha=0.9) +
+  geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + scale_fill_viridis_d() +
+  classic + labs(x="LE, Free E", y="LE, E = 1", fill="Free E")
+ggsave("./figures/LE1dvsnd.png", width = 4, height = 3)
 
 #histogram gle by taxon (predictability)
 ggplot(gpdd_d, aes(x=minci, fill=TaxonomicClass2)) + 
@@ -123,22 +124,33 @@ ggplot(gpdd_d, aes(x=minci, fill=TaxonomicClass2)) +
   geom_histogram(boundary = 0, binwidth = 0.1) +
   geom_vline(xintercept = 0) + theme_bw() 
 
-#distribution of Es, taus
+#distribution of Es, taus ####
+Es=ggplot(gpdd_d, aes(x=factor(E), fill=TaxonomicClass2)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  geom_bar(position = "stack") + xlab(expression(Embedding~dimension~(E))) +
+  classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
+  labs(y="Count", fill="Taxonomic\nClass") + scale_fill_brewer(palette = "Set1")
+taus=ggplot(gpdd_d, aes(x=factor(tau), fill=TaxonomicClass2)) + 
+  #facet_grid(predictable_ag~.) + 
+  geom_bar(position = "stack") + xlab(expression(Time~delay~(tau))) +
+  classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
+  labs(y="Count", fill="Taxonomic\nClass") + scale_fill_brewer(palette = "Set1")
+
+etau=plot_grid(Es + theme(legend.position="none"), taus + theme(legend.position="none"), align = 'vh',labels="AUTO")
+legend <- get_legend(Es + theme(legend.box.margin = margin(0, 0, 0, 12)))
+plot_grid(etau, legend, rel_widths = c(3, 0.7))
+ggsave("./figures/Etaudist.png", width = 8, height = 3.5)
+
 ggplot(gpdd_d, aes(x=factor(E), fill=TaxonomicClass2)) + 
-  #facet_grid(predictable_ag~.) + 
-  geom_bar(position = "stack") + xlab("Best E") +
+  facet_grid(TaxonomicClass2~., scales="free_y") + 
+  geom_bar(position = "stack") + xlab(expression(Embedding~dimension~(E))) +
   classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
-  labs(y="Count", fill="Taxonomic\nClass") 
-ggplot(gpdd_d, aes(x=factor(tau), fill=TaxonomicClass2)) + 
-  #facet_grid(predictable_ag~.) + 
-  geom_bar(position = "stack") + xlab("Best tau") +
-  classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
-  labs(y="Count", fill="Taxonomic\nClass")
+  labs(y="Count", fill="Taxonomic\nClass") + scale_fill_brewer(palette = "Set1")
 ggplot(gpdd_d, aes(x=factor(tau), fill=factor(E))) + 
   #facet_grid(predictable_ag~.) + 
   geom_bar(position = "stack") + xlab("Best tau") +
   classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
-  labs(y="Count", fill="Best E")
+  labs(y="Count", fill="Best E") 
 
 #E vs time series length
 ggplot(gpdd_d, aes(y=E, x=datasetlength, color=TaxonomicClass2)) + 
@@ -152,10 +164,17 @@ ggplot(gpdd_d, aes(y=E, x=timescale_MinAge*MinAge_mo/12, color=TaxonomicClass2))
   geom_point(size=2, alpha=0.4) + 
   classic + labs(color="Taxonomic\nClass") + legalpha
 ggplot(gpdd_d, aes(y=E, x=log10(timescale_MinAge), color=TaxonomicClass2)) + 
-  facet_grid(TaxonomicClass2~.) + 
+  #facet_grid(TaxonomicClass2~.) + 
   ylab("E") + xlab("Time Series Length (log10 generations)") + 
   geom_point(size=2, alpha=0.4) + 
   classic + labs(color="Taxonomic\nClass") + legalpha
+#E vs gen time
+ggplot(gpdd_d, aes(y=E, x=log10(MinAge_mo), color=TaxonomicClass2)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  ylab("E") + xlab("log10 Generation Time (months)") + 
+  geom_point(size=2, alpha=0.4) + 
+  classic + labs(color="Taxonomic\nClass") + legalpha
+
 
 #gle by E, theta
 ggplot(gpdd_d, aes(y=minci, x=E)) + 
@@ -176,13 +195,17 @@ ggplot(gpdd_d, aes(y=minci, x=theta, color=TaxonomicClass2)) +
   geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
   classic + labs(color="Taxonomic\nClass") + legalpha
 
-#age at maturity vs lifespan and mass
+#age at maturity vs mass vs gens sampled ####
+ggplot(gpdd_d, aes(y=log10(MinAge_mo), x=log10(Mass_g), fill=log10(timestep_MinAge))) + 
+  ylab(expression(log[10]~Age~at~Maturity~(months))) + 
+  xlab(expression(log[10]~Mass~(g))) +
+  geom_point(size=3, pch=21, alpha=0.9, color="black") +
+  classic + labs(fill="Time series\nlength (log10\ngenerations)") + scale_fill_viridis_c()
+ggsave("./figures/AgeMat_Mass_GenSampled.png", width = 4, height = 3)
+
+
 ggplot(gpdd_d, aes(y=log10(MinAge_mo), x=log10(Lifespan_mo), fill=datasetlength)) + 
   ylab("log10 Age at Maturity (months)") + xlab("log10 Lifespan (months)") + 
-  geom_point(size=2.5, pch=21, color="black") +
-  classic + labs(fill="Time Series\nLength")
-ggplot(gpdd_d, aes(y=log10(MinAge_mo), x=log10(Mass_g), fill=datasetlength)) + 
-  ylab("log10 Age at Maturity (months)") + xlab("log10 Mass (g)") +
   geom_point(size=2.5, pch=21, color="black") +
   classic + labs(fill="Time Series\nLength")
 ggplot(gpdd_d, aes(y=log10(Lifespan_mo), x=log10(Mass_g), fill=datasetlength)) + 
@@ -229,7 +252,8 @@ ggplot(gpdd_d, aes(y=minci_mo, x=log10(Mass_g), color=TaxonomicClass2)) +
   geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
   classic + labs(color="Taxonomic\nClass")
 #comparison to Anderson and Gilooly 2020 (positive values only)
-ggplot(filter(gpdd_d, mincisign=="chaotic"), aes(y=log10(minci_mo), x=log10(Mass_g))) + 
+#positive le vs mass #####
+loglemass=ggplot(filter(gpdd_d, mincisign=="chaotic"), aes(y=log10(minci_mo), x=log10(Mass_g))) + 
   #facet_grid(TaxonomicClass2~., scales="free_y") +
   ylab("log10 LE lower bound (per month)") + xlab("log10 Mass (g)") +
   geom_smooth(method="lm", se = F, color="black") +
@@ -240,7 +264,7 @@ ggplot(filter(gpdd_d, mincisign=="chaotic"), aes(y=log10(minci_gen), x=log10(Mas
   #facet_grid(TaxonomicClass2~., scales="free_y") +
   ylab("log10 LE lower bound (per generation)") + xlab("log10 Mass (g)") +
   geom_smooth(method="lm", se = F, color="black") +
-  geom_hline(yintercept = log10(0.06), lty=2) +
+  #geom_hline(yintercept = log10(0.06), lty=2) +
   geom_point(aes(color=TaxonomicClass2), size=2, alpha=0.5) + 
   classic + labs(color="Taxonomic\nClass") + legalpha
 summary(lm(log10(minci_gen)~log10(Mass_g), data=filter(gpdd_d, mincisign=="chaotic")))
@@ -255,24 +279,40 @@ ggplot(gpdd_d, aes(y=minci_gen, x=log10(Mass_g), color=TaxonomicClass2)) +
 
 #gle by gen time
 ggplot(gpdd_d, aes(y=minci_mo, x=log10(MinAge_mo), color=TaxonomicClass2)) + 
-  #facet_grid(predictable_ag~.) + 
   ylab("LE lower bound (per month)") + xlab("log10 Generation Time (months)") + 
   geom_point(size=2, alpha=0.4) +
-  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
+  geom_hline(yintercept = 0) +
   classic + labs(color="Taxonomic\nClass") + legalpha
 ggplot(gpdd_d, aes(y=minci_gen, x=log10(MinAge_mo), color=TaxonomicClass2)) + 
-  #facet_grid(predictable_ag~.) + 
   ylab("LE lower bound (per generation)") + xlab("log10 Generation Time (months)") + 
   geom_point(size=2, alpha=0.4) +
-  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
+  geom_hline(yintercept = 0) +
   classic + labs(color="Taxonomic\nClass") + ylim(c(-.3,.3)) + xlim(c(-2,0))
-#gle by gen time by E
-ggplot(gpdd_d, aes(y=minci_mo, x=log10(MinAge_mo), color=E)) + 
-  facet_grid(TaxonomicClass2~., scales="free_y") + 
-  ylab("LE lower bound (per month)") + xlab("log10 Generation Time (months)") + 
-  geom_point(size=2, alpha=0.5) +
-  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
-  classic #+ labs(color="Taxonomic\nClass")
+
+#gle by gen time by E ####
+LEmgtE=ggplot(gpdd_d, aes(y=minci_mo, x=log10(MinAge_mo), color=E)) + 
+  ylab(expression(LE~(month^-1))) + xlab(expression(~log[10]~Generation~Time~(months))) + 
+  geom_point(size=3, alpha=0.7) +
+  geom_hline(yintercept = 0) +
+  classic + scale_color_viridis_c()
+LEggtE=ggplot(gpdd_d, aes(y=minci_gen, x=log10(MinAge_mo), color=E)) + 
+  ylab(expression(LE~(generation^-1))) + xlab(expression(~log[10]~Generation~Time~(months))) + 
+  geom_point(size=3, alpha=0.7) +
+  geom_hline(yintercept = 0) + 
+  classic + scale_color_viridis_c()
+LEg2gtE=ggplot(gpdd_d, aes(y=log10(abs(minci_gen)), x=log10(MinAge_mo), color=mincisign)) +
+  ylab(expression(~log[10]~abs(LE)~(generation^-1))) + 
+  xlab(expression(~log[10]~Generation~Time~(months))) +  
+  geom_point(size=3, alpha=0.7) + labs(color="Classification") +
+  classic + scale_color_brewer(palette = "Paired", direction = -1)
+loglemass=ggplot(filter(gpdd_d, mincisign=="chaotic"), aes(y=log10(minci_mo), x=log10(Mass_g))) + 
+  ylab(expression(~log[10]~LE~(month^-1))) + xlab(expression(~log[10]~Mass~(g))) +
+  #geom_smooth(method="lm", se = F, color="black") +
+  geom_point(aes(fill=TaxonomicClass2), size=3, pch=21, color="black", alpha=0.7) + 
+  classic + labs(fill="Taxonomic\nClass") + scale_fill_brewer(palette = "Set1")
+
+plot_grid(LEmgtE, loglemass, LEggtE, LEg2gtE, nrow = 2, labels="AUTO", rel_widths = c(0.9,1))
+ggsave("./figures/gentime.png", width = 8, height = 6)
 
 #gle by ts length
 ggplot(gpdd_d, aes(y=minci_mo, x=datasetlength, color=TaxonomicClass2)) + 
@@ -324,19 +364,24 @@ ggplot(gpdd_d, aes(y=minci, x=bestR2m, color=TaxonomicClass2)) +
   geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
   classic + labs(color="Taxonomic\nClass")
 
-#gle vs monotonic trend
-ggplot(gpdd_d, aes(y=minci, x=monotonicR2, color=TaxonomicClass2)) + 
+#gle vs monotonic trend ####
+ggplot(gpdd_d, aes(y=minci, x=monotonicR2, fill=TaxonomicClass2)) + 
   #facet_grid(TaxonomicClass2~.) + 
   ylab("LE lower bound (per timestep)") + xlab("Monotonic trend R-squared") +
-  geom_point(size=2, alpha=0.5) +
+  geom_point(size=3, alpha=0.5, color="black") +
   geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
-  classic + labs(color="Classification", fill="Taxonomic\nClass")
-ggplot(gpdd_d, aes(y=minci_mo, x=monotonicR2, color=TaxonomicClass2)) + 
+  classic + labs(fill="Taxonomic\nClass") +
+  scale_fill_brewer(palette = "Set1")
+
+ggplot(gpdd_d, aes(y=minci_mo, x=monotonicR2, fill=TaxonomicClass2)) + 
   #facet_grid(TaxonomicClass2~.) + 
-  ylab("LE lower bound (per month)") + xlab("Monotonic trend R-squared") +
-  geom_point(size=2, alpha=0.5) +
+  ylab(expression(LE~(month^-1))) + xlab(expression(Monotonic~trend~R^2)) +
+  geom_point(size=3, pch=21, alpha=0.9) +
   geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
-  classic + labs(color="Classification", fill="Taxonomic\nClass")
+  classic + labs(fill="Taxonomic\nClass") +scale_fill_brewer(palette = "Set1")
+ggsave("./figures/monotonictrend.png", width = 4.5, height = 3)
+
+
 #ts length vs monotonic trend
 ggplot(gpdd_d, aes(y=monotonicR2, x=log10(timestep_MinAge), color=TaxonomicClass2)) + 
   #facet_grid(predictable_ag~.) + 
@@ -482,13 +527,16 @@ gpdd_combo_sub=filter(gpdd_combo, MainID %in% unique(gpdd_sub$MainID))
 gpdd_sub=filter(gpdd_d, mincisign=="chaotic" & datasetlength>30 & !is.na(timescale_MinAge)) %>% arrange(desc(timescale_MinAge))
 gpdd_combo_sub=filter(gpdd_combo, MainID %in% unique(gpdd_sub$MainID))
 
+#shortened chaotic series ####
 ggplot(gpdd_sub, aes(y=factor(MainID, levels = unique(gpdd_sub$MainID)), x=timescale_MinAge, fill=mincisign, group=MainID)) + 
   #facet_grid(TaxonomicClass2~.) + 
   ylab("MainID") + xlab("Time series length (generations)") + 
   geom_path(data=gpdd_combo_sub, size=2, aes(color=MinAge_mo)) +
   geom_point(data=gpdd_combo_sub, pch=21, size=2) + 
   geom_point(size=2, pch=21, aes(fill=mincisign)) + scale_x_log10(breaks=c(1,10,100,1000,10000)) +
-  classic + scale_color_viridis_c(trans="log10")+ labs(fill="Classification", color="Generation\ntime (months)")  
+  classic + scale_color_viridis_c(trans="log10")+ scale_fill_manual(values = c("gray30","white")) +
+  labs(fill="Classification", color="Generation\ntime (months)") + theme(axis.text.y = element_text(size=6)) 
+ggsave("./figures/shortchaotic.png", width = 5, height = 5)
 
 ggplot(gpdd_sub, aes(y=E, x=log10(timescale_MinAge), color=log10(MinAge_mo), group=MainID)) + 
   facet_grid(TaxonomicClass2~.) + 

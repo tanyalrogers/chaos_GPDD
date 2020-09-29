@@ -134,3 +134,14 @@ ggplot(sims_summary3, aes(x=LEshift_class.05, y=Classification, fill=proportion)
   scale_y_discrete(expand = c(0,0)) +
   ylab("True Dynamics") + xlab("Classification") +
   labs(fill="Proportion")
+
+#regression method
+ggplot(sims_d, aes(x=NoiseLevel, y=LEreg, color=Classification)) +
+  facet_grid(TSlength~.) + geom_hline(yintercept = 0) +
+  geom_point(position = position_dodge(0.02)) + theme_bw()
+
+ggplot(sims_d, aes(x=Model, y=LEreg, color=Classification)) +
+  facet_grid(TSlength~NoiseLevel, scales = "free_y") + geom_hline(yintercept = 0) +
+  geom_point() + #geom_boxplot() + 
+  theme_bw() + xlabvert
+
