@@ -224,11 +224,18 @@ gpdd_short$minmean_gen=gpdd_short$minmean_mo*gpdd_short$MinAge_mo
 
 gpdd_combo=rbind(gpdd1,gpdd_short)
 
-#
+#export E and tau for other analyses
 exportEtau=select(gpdd_d, MainID, E, tau)
-write.csv(exportEtau, "./data/empiricalEtau_smap.csv", row.names = F)
+write.csv(exportEtau, "./data/gpdd_Etau_smap.csv", row.names = F)
 
-#save(gpdd_d, gpdd_results, gpdd_combo, file = "./Data/gpdd_results_update.Rdata")
+#export results
+gpdd_d$modelform=map_chr(gpdd_results$modelresultsbest, ~.x$form)
+exportres=select(gpdd_d, MainID, R2abund=bestR2, R2gr=bestR2m, modelform, E, tau, theta, 
+                 LEmean=minmean, LEmin=minci, LEmin_mo=minci_mo, LEmin_gen=minci_gen, LEclass=mincisign, 
+                 LEmean1d=minmean1d, LEmin1d=minci1d, LEclass1d=mincisign1d, LLE_proppos=lle_pp)
+write.csv(exportres, "./data/gpdd_results_smap.csv", row.names = F)
+
+#save(gpdd_d, gpdd_results, gpdd_combo, file = "./data/gpdd_results_update.Rdata")
 
 # #regression method
 # gpdd_results$regLE=map2(gpdd_d$data_rescale, gpdd_results$modelresultsbest, regLE, y="PopRescale")

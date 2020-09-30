@@ -68,7 +68,7 @@ sims_d$Model=factor(sims_d$Model, levels=modelorder)
 #set up results df
 sims_results=select(sims_d, ID, SimNumber, Model)
 
-#get hyperparameters (this take a long time)
+#get hyperparameters (this takes a long time)
 sims_results$hpar1=future_map(sims_d$data, besthyper, y="Value", ylog=F, pgr="none")
 #get model output
 sims_results$modelresults1=map2(sims_d$data, sims_results$hpar1, smap_model_options, y="Value", model=1)
@@ -129,7 +129,7 @@ modelorder=unique(arrange(sims2_d, Classification, Model)$Model)
 sims2_d$Model=factor(sims2_d$Model, levels=modelorder)
 #set up results df
 sims2_results=select(sims2_d, ID, SimNumber, Model)
-#get hyperparameters (this take a long time)
+#get hyperparameters (this takes a long time)
 start=Sys.time()
 sims2_results$hpar1=future_map(sims2_d$data, besthyper, y="Value", ylog=F, pgr="none")
 end=Sys.time(); end-start
@@ -219,16 +219,96 @@ sims_d$LEreg_se=map_dbl(sims_results$regLE, ~.x$LEreg_se)
 #save results
 #save(sims_d, sims_results, sims_log, sims_log_results, file = "./data/sims_results_update.Rdata")
 
-#export E and tau for Bethany
+#export E and tau for other analyses
 Eexport=spread(select(sims_d, ID:SimNumber, Ebest), SimNumber, Ebest) %>% 
   select(ID:TSlength, paste0("Sim.",1:100))
 tauexport=spread(select(sims_d, ID:SimNumber, taubest), SimNumber, taubest) %>% 
   select(ID:TSlength, paste0("Sim.",1:100))
-write.csv(Eexport,"./data/simsE.csv", row.names = F)
-write.csv(tauexport,"./data/simstau.csv", row.names = F)
+write.csv(Eexport,"./data/sims_test_E.csv", row.names = F)
+write.csv(tauexport,"./data/sims_test_tau.csv", row.names = F)
 
+#export results
+sims_d$modelform=map(sims_results$modelresultsbest, ~.x$form)
+dexport=select(sims_d, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, LEmean=minmean, LEmin=minci)
+write.csv(dexport,"./data/sims_test_results.csv", row.names = F)
 
+#validation data ####
+sims=read.csv("./data/ChaosMetaAnalysisSimulatedDataVALIDATION.csv")
 
+sims_v=select(sims, ID, Model, TimeStep, NoiseLevel, TSlength=TimeSeriesLength, Classification, Sim.1:Sim.100) %>% 
+  gather(SimNumber, Value, Sim.1:Sim.100) %>% 
+  group_by(ID,Model,Classification,NoiseLevel,TSlength,SimNumber) %>% nest() %>% 
+  mutate(data=map(data, as.data.frame)) %>% ungroup()
+modelorder=unique(arrange(sims_v, Classification, Model)$Model)
+sims_v$Model=factor(sims_v$Model, levels=modelorder)
+
+#set up results df
+sims_vresults=select(sims_v, ID, SimNumber, Model)
+#get hyperparameters (this takes a long time)
+start=Sys.time()
+sims_vresults$hpar1=future_map(sims_v$data, besthyper, y="Value", ylog=F, pgr="none")
+end=Sys.time(); end-start
+#get model output
+sims_vresults$modelresults1=map2(sims_v$data, sims_vresults$hpar1, smap_model_options, y="Value", model=1)
+#get R2
+sims_v$R1a=map_dbl(sims_vresults$modelresults1, ~.x$modelstats$R2abund)
+
+#fit alt models for strictly positive data
+# #1 and 3 are same, 2 and 4 are same
+logmodels=c("CompetitionChaotic", "CompetitionPeriodic")
+sims_vlog=filter(sims_v, Model %in% logmodels)
+sims_vlog_results=filter(sims_vresults, Model %in% logmodels)
+sims_vlog_results$hpar4=future_map(sims_vlog$data, besthyper, y="Value", ylog=F, pgr="gr")
+sims_vlog_results$hpar5=future_map(sims_vlog$data, besthyper, y="Value", ylog=T, pgr="gr")
+sims_vlog_results$modelresults4=map2(sims_vlog$data, sims_vlog_results$hpar4, smap_model_options, y="Value", model=4)
+sims_vlog_results$modelresults5=map2(sims_vlog$data, sims_vlog_results$hpar5, smap_model_options, y="Value", model=5)
+sims_vlog$R1a=map_dbl(sims_vlog_results$modelresults1, ~.x$modelstats$R2abund)
+sims_vlog$R4a=map_dbl(sims_vlog_results$modelresults4, ~.x$modelstats$R2abund)
+sims_vlog$R5a=map_dbl(sims_vlog_results$modelresults5, ~.x$modelstats$R2abund)
+sims_vlog$bestR2=select(sims_vlog,R1a,R4a,R5a) %>% apply(1,max)
+sims_vlog$bestmodel=select(sims_vlog,R1a,R4a,R5a) %>% apply(1,which.max)
+sims_vlog_results$bestmodel=select(sims_vlog,R1a,R4a,R5a) %>% apply(1,which.max)
+sims_vlog_results$modelresultsbest=cbind(select(sims_vlog_results, modelresults1, modelresults4, modelresults5),sims_vlog$bestmodel) %>% apply(1, function(x) {m=as.numeric(x["sims_vlog$bestmodel"]); x[m][[1]]})
+
+#join log models with others
+sims_vresults=left_join(sims_vresults, select(sims_vlog_results, ID, SimNumber, modelresultsbest, bestmodel), by=c("ID", "SimNumber"))
+sims_vresults$modelresultsbest=ifelse(sims_v$Model %in% logmodels,
+                                      sims_vresults$modelresultsbest, 
+                                      sims_vresults$modelresults1)
+
+#get stability
+sims_vresults$jacobians=map(sims_vresults$modelresultsbest, getJacobians)
+sims_vresults$stability=map2(sims_vresults$modelresultsbest, sims_vresults$jacobians, getStability)
+sims_vresults$LEshift=map2(sims_vresults$modelresultsbest, sims_vresults$jacobians, LEshift)
+
+#pull results
+sims_v$Ebest=map_dbl(sims_vresults$modelresultsbest, ~.x$modelstats$E)
+sims_v$taubest=map_dbl(sims_vresults$modelresultsbest, ~.x$modelstats$tau)
+sims_v$thetabest=map_dbl(sims_vresults$modelresultsbest, ~.x$modelstats$theta)
+sims_v$R2best=map_dbl(sims_vresults$modelresultsbest, ~.x$modelstats$R2abund)
+sims_v$gle=map_dbl(sims_vresults$stability, ~.x$gle)
+sims_v$minmean=map_dbl(sims_vresults$LEshift, ~.x$minmean)
+sims_v$minci=map_dbl(sims_vresults$LEshift, ~.x$minci)
+
+#regression method
+sims_vresults$regLE=map2(sims_v$data, sims_vresults$modelresultsbest, regLE, y="Value")
+sims_v$LEreg=map_dbl(sims_vresults$regLE, ~.x$LEreg)
+sims_v$LEreg_se=map_dbl(sims_vresults$regLE, ~.x$LEreg_se)
+
+save(sims_v, sims_vresults, file = "./data/sims_validation.Rdata")
+
+#export E and tau for other analyses
+Eexport=spread(select(sims_v, ID:SimNumber, Ebest), SimNumber, Ebest) %>% 
+  select(ID:TSlength, paste0("Sim.",1:100))
+tauexport=spread(select(sims_v, ID:SimNumber, taubest), SimNumber, taubest) %>% 
+  select(ID:TSlength, paste0("Sim.",1:100))
+write.csv(Eexport,"./data/sims_validation_E.csv", row.names = F)
+write.csv(tauexport,"./data/sims_validation_tau.csv", row.names = F)
+
+#export results
+sims_v$modelform=map_chr(sims_vresults$modelresultsbest, ~.x$form)
+vexport=select(sims_v, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, LEmean=minmean, LEmin=minci)
+write.csv(vexport,"./data/sims_validation_results.csv", row.names = F)
 
 #testing ####
 ser_or=sims_test[4,]$data[[1]]$Value

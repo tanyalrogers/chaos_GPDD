@@ -350,19 +350,31 @@ ggplot(gpdd_d, aes(y=bestR2, x=log10(timescale_MinAge), color=TaxonomicClass2)) 
   geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
   classic + labs(color="Taxonomic\nClass") + legalpha
 
-#gle by R2
-ggplot(gpdd_d, aes(y=minci, x=bestR2, color=TaxonomicClass2)) + 
+#gle by R2 ####
+r2ab=ggplot(gpdd_d, aes(y=minci_mo, x=bestR2, fill=TaxonomicClass2)) + 
   #facet_grid(TaxonomicClass2~.) + 
-  ylab("LE lower bound (per timestep)") + xlab("R-squared") +
-  geom_point(size=2, alpha=0.5) +
-  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
-  classic + labs(color="Taxonomic\nClass")
-ggplot(gpdd_d, aes(y=minci, x=bestR2m, color=TaxonomicClass2)) + 
-  facet_grid(TaxonomicClass2~.) + 
-  ylab("LE lower bound (per timestep)") + xlab("R-squared (growth rate)") +
-  geom_point(size=2, alpha=0.5) +
-  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
-  classic + labs(color="Taxonomic\nClass")
+  ylab(expression(LE~(month^-1))) + xlab(expression(R^2~'for'~abundance)) +
+  geom_hline(yintercept = 0) + geom_vline(xintercept = 0.2) + 
+  geom_point(size=3, pch=21, alpha=0.9, color="black") +
+  classic + labs(fill="Taxonomic\nClass") + scale_fill_brewer(palette = "Set1")
+r2gr=ggplot(gpdd_d, aes(y=minci_mo, x=bestR2m, fill=TaxonomicClass2)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  ylab(expression(LE~(month^-1))) + xlab(expression(R^2~'for'~growth~rate)) +
+  geom_hline(yintercept = 0) + geom_vline(xintercept = 0.2) + 
+  geom_point(size=3, pch=21, alpha=0.9, color="black") +
+  classic + labs(fill="Taxonomic\nClass") + scale_fill_brewer(palette = "Set1")
+r22=ggplot(gpdd_d, aes(y=bestR2, x=bestR2m, fill=mincisign)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  ylab(expression(R^2~'for'~abundance)) + xlab(expression(R^2~'for'~growth~rate)) +
+  geom_point(size=3, pch=21, alpha=0.9, color="black") +
+  geom_hline(yintercept = 0.2) + geom_vline(xintercept = 0.2) + 
+  classic + labs(fill="Classification") + scale_fill_brewer(palette = "Paired", direction = -1)
+r2plots=plot_grid(r2ab + theme(legend.position="none"), r2gr + theme(legend.position="none"), align = 'vh',labels="AUTO")
+legend <- get_legend(r2ab + theme(legend.box.margin = margin(0, 0, 0, 12)))
+r2plots2=plot_grid(r22, legend, ncol=2, rel_widths = c(2.5,1), labels=c("C",""))
+plot_grid(r2plots,r2plots2, nrow = 2)
+ggsave("./figures/R2LE.png", width = 6, height = 5)
+
 
 #gle vs monotonic trend ####
 ggplot(gpdd_d, aes(y=minci, x=monotonicR2, fill=TaxonomicClass2)) + 
@@ -537,6 +549,63 @@ ggplot(gpdd_sub, aes(y=factor(MainID, levels = unique(gpdd_sub$MainID)), x=times
   classic + scale_color_viridis_c(trans="log10")+ scale_fill_manual(values = c("gray30","white")) +
   labs(fill="Classification", color="Generation\ntime (months)") + theme(axis.text.y = element_text(size=6)) 
 ggsave("./figures/shortchaotic.png", width = 5, height = 5)
+
+ggplot(gpdd_sub, aes(y=factor(MainID, levels = unique(gpdd_sub$MainID)), x=timescale_MinAge, fill=factor(E), group=MainID)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  ylab("MainID") + xlab("Time series length (generations)") + 
+  geom_path(data=gpdd_combo_sub, size=2, aes(color=MinAge_mo)) +
+  geom_point(data=gpdd_combo_sub, pch=21, size=2) + 
+  geom_point(size=2, pch=21, aes(fill=factor(E))) + scale_x_log10(breaks=c(1,10,100,1000,10000)) +
+  classic + scale_color_viridis_c(trans="log10")+ scale_fill_viridis_d() +
+  labs(fill="E", color="Generation\ntime (months)") + theme(axis.text.y = element_text(size=6)) 
+
+#histogram of Es
+ggplot(gpdd_sub, aes(x=factor(E), fill=TaxonomicClass2)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  geom_bar(position = "stack") + xlab(expression(Embedding~dimension~(E))) +
+  classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
+  labs(y="Count", fill="Taxonomic\nClass") + scale_fill_brewer(palette = "Set1")
+ggplot(filter(gpdd_combo_sub, datasetlength==30), aes(x=factor(E), fill=TaxonomicClass2)) + 
+  #facet_grid(TaxonomicClass2~.) + 
+  geom_bar(position = "stack") + xlab(expression(Embedding~dimension~(E))) +
+  classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
+  labs(y="Count", fill="Taxonomic\nClass") + scale_fill_brewer(palette = "Set1")
+
+#change in E and LE with short ts ####
+shortsum=select(gpdd_sub, MainID, TaxonomicClass2, datasetlength, timescale_MinAge, MinAge_mo, Mass_g, E, minci_mo)
+shortsum2=select(gpdd_combo_sub, MainID, datasetlength2=datasetlength, timescale_MinAge2=timescale_MinAge, E2=E, minci_mo2=minci_mo) %>% 
+  filter(datasetlength2==30)
+shortsum=left_join(shortsum, shortsum2)
+shortsum=mutate(shortsum,
+                dE=E2-E,
+                dminci_mo=minci_mo2-minci_mo,
+                dlogtimescale_MinAge=log10(timescale_MinAge2)-log10(timescale_MinAge)) 
+d1=ggplot(shortsum) +
+  geom_hline(yintercept = 0, lty=2) +
+  labs(x="", y="Change in E") +
+  geom_boxplot(aes(y=dE, x="")) + classic + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+d2=ggplot(shortsum) +
+  geom_hline(yintercept = 0, lty=2) +
+  labs(x="", y="Change in LE") +
+  geom_boxplot(aes(y=dminci_mo, x="")) + classic + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+plot_grid(d1,d2,align = "hv", labels = "AUTO")
+ggsave("./figures/changeE_LE.png", width = 4, height = 3)
+
+ggplot(shortsum, aes(y=dE, x=dlogtimescale_MinAge, color=TaxonomicClass2)) +
+  geom_hline(yintercept = 0, lty=2) +
+  labs(x="Change in Generation Sampled", y="Change in E") +
+  geom_point(size=3, alpha=0.5) + classic 
+ggplot(shortsum, aes(y=minci_mo2, x=minci_mo, color=dE)) +
+  geom_hline(yintercept = 0, lty=2) +
+  geom_vline(xintercept = 0, lty=2) +
+  labs(x="LE", y="LE short") +
+  geom_point(size=3, alpha=0.5) + classic 
+ggplot(shortsum, aes(y=dminci_mo, x=dE, color=TaxonomicClass2)) +
+  geom_hline(yintercept = 0, lty=2) +
+  geom_vline(xintercept = 0, lty=2) +
+  labs(x="Change in E", y="Change in LE") +
+  geom_point(size=3, alpha=0.5) + classic 
+
 
 ggplot(gpdd_sub, aes(y=E, x=log10(timescale_MinAge), color=log10(MinAge_mo), group=MainID)) + 
   facet_grid(TaxonomicClass2~.) + 
