@@ -228,7 +228,7 @@ write.csv(Eexport,"./data/sims_test_E.csv", row.names = F)
 write.csv(tauexport,"./data/sims_test_tau.csv", row.names = F)
 
 #export results
-sims_d$modelform=map(sims_results$modelresultsbest, ~.x$form)
+sims_d$modelform=map_chr(sims_results$modelresultsbest, ~.x$form)
 dexport=select(sims_d, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, LEmean=minmean, LEmin=minci)
 write.csv(dexport,"./data/sims_test_results.csv", row.names = F)
 
