@@ -217,7 +217,8 @@ sims_d$LEreg=map_dbl(sims_results$regLE, ~.x$LEreg)
 sims_d$LEreg_se=map_dbl(sims_results$regLE, ~.x$LEreg_se)
 
 #save results
-#save(sims_d, sims_results, sims_log, sims_log_results, file = "./data/sims_results_update.Rdata")
+#save(sims_d, sims_results, file = "./data/sims_results_update.Rdata")
+#save(sims_log, sims_log_results, sims2_log, sims2_log_results, file = "./data/sims_results_log_update.Rdata")
 
 #export E and tau for other analyses
 Eexport=spread(select(sims_d, ID:SimNumber, Ebest), SimNumber, Ebest) %>% 
@@ -229,7 +230,7 @@ write.csv(tauexport,"./data/sims_test_tau.csv", row.names = F)
 
 #export results
 sims_d$modelform=map_chr(sims_results$modelresultsbest, ~.x$form)
-dexport=select(sims_d, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, LEmean=minmean, LEmin=minci)
+dexport=select(sims_d, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, LEmean=minmean, LEmin=minci, LEreg, LEreg_se)
 write.csv(dexport,"./data/sims_test_results.csv", row.names = F)
 
 #validation data ####
@@ -255,7 +256,7 @@ sims_v$R1a=map_dbl(sims_vresults$modelresults1, ~.x$modelstats$R2abund)
 
 #fit alt models for strictly positive data
 # #1 and 3 are same, 2 and 4 are same
-logmodels=c("CompetitionChaotic", "CompetitionPeriodic")
+logmodels=c("CompetitionChaotic", "CompetitionPeriodic", "TinkerbellChaotic", "TinkerbellPeriodic")
 sims_vlog=filter(sims_v, Model %in% logmodels)
 sims_vlog_results=filter(sims_vresults, Model %in% logmodels)
 sims_vlog_results$hpar4=future_map(sims_vlog$data, besthyper, y="Value", ylog=F, pgr="gr")
@@ -295,7 +296,9 @@ sims_vresults$regLE=map2(sims_v$data, sims_vresults$modelresultsbest, regLE, y="
 sims_v$LEreg=map_dbl(sims_vresults$regLE, ~.x$LEreg)
 sims_v$LEreg_se=map_dbl(sims_vresults$regLE, ~.x$LEreg_se)
 
-save(sims_v, sims_vresults, file = "./data/sims_validation.Rdata")
+#save results
+#save(sims_v, sims_vresults, file = "./data/sims_validation.Rdata")
+#save(sims_vlog, sims_vlog_results, file = "./data/sims_validation_log.Rdata")
 
 #export E and tau for other analyses
 Eexport=spread(select(sims_v, ID:SimNumber, Ebest), SimNumber, Ebest) %>% 
@@ -307,7 +310,7 @@ write.csv(tauexport,"./data/sims_validation_tau.csv", row.names = F)
 
 #export results
 sims_v$modelform=map_chr(sims_vresults$modelresultsbest, ~.x$form)
-vexport=select(sims_v, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, LEmean=minmean, LEmin=minci)
+vexport=select(sims_v, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, LEmean=minmean, LEmin=minci, LEreg, LEreg_se)
 write.csv(vexport,"./data/sims_validation_results.csv", row.names = F)
 
 #testing ####
