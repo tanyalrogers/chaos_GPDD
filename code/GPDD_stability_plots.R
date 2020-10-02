@@ -31,6 +31,9 @@ length(which(gpdd_d$lle_pp>0))/length(which(!is.na(gpdd_d$lle_pp)))
 #prop with at least 0.5 pos local le 
 length(which(gpdd_d$lle_pp>0.5))/length(which(!is.na(gpdd_d$lle_pp)))
 
+#regression method
+length(which(gpdd_d$LEregmin>0.01))/length(which(!is.na(gpdd_d$LEregmin)))
+
 # #gles are correlated, although some outliers
 # pairs(select(gpdd_d, gle1:gle5, gle))
 # #timespan variable are correlated with each other, or their inverse
