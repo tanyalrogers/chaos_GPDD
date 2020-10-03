@@ -406,7 +406,7 @@ LE1d=function(data, bestmodel, taufix=NULL, y) {
   return(list(modelresults=modelresults, jacobians=jacobians, stability=stability))
 }
 
-# Regression-based LE (Rosenstein method) ***update E and tau selection***
+# Regression-based LE (Rosenstein method) 
 regLE=function(data, modelresults, y) {
   #recompute bestE with simplex
   ser=data[,y]
@@ -535,4 +535,15 @@ timescale_mo=function(SamplingInterval, y) {
                               ifelse(SamplingInterval=="4-week", y/1.07,
                                      ifelse(SamplingInterval=="weekly", y/4.286,NA))))))
   
+}
+
+SiblymodelLE=function(data, y) {
+  ser=data[,y]
+  ser_log=log(ser)
+  p1=lag(ser_log)
+  p2=lag(ser_log)^2
+  mod=lm(ser_log~p1+p2)
+  c1=coefficients(mod)[2]
+  c2=coefficients(mod)[3]
+  LE=mean(log(abs(c1+2*c2*ser_log)), na.rm=T)
 }

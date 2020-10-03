@@ -230,6 +230,9 @@ gpdd_d$LEreg=map_dbl(gpdd_results$regLE, ~.x$LEreg)
 gpdd_d$LEreg_se=map_dbl(gpdd_results$regLE, ~.x$LEreg_se)
 gpdd_d$LEregmin=gpdd_d$LEreg-1.96*gpdd_d$LEreg_se
 
+#sibly method
+gpdd_d$LEsibly=map_dbl(gpdd_d$data_rescale, SiblymodelLE, y="PopRescale")
+
 #save(gpdd_d, gpdd_results, gpdd_combo, file = "./data/gpdd_results_update.Rdata")
 
 #export E and tau for other analyses
@@ -240,7 +243,7 @@ write.csv(exportEtau, "./data/gpdd_Etau_smap.csv", row.names = F)
 gpdd_d$modelform=map_chr(gpdd_results$modelresultsbest, ~.x$form)
 exportres=select(gpdd_d, MainID, R2abund=bestR2, R2gr=bestR2m, modelform, E, tau, theta, 
                  LEmean=minmean, LEmin=minci, LEmin_mo=minci_mo, LEmin_gen=minci_gen, LEclass=mincisign, 
-                 LEmean1d=minmean1d, LEmin1d=minci1d, LEclass1d=mincisign1d, LLE_proppos=lle_pp, LEreg, LEreg_se, LEregmin)
+                 LEmean1d=minmean1d, LEmin1d=minci1d, LEclass1d=mincisign1d, LLE_proppos=lle_pp, LEreg, LEreg_se, LEregmin, LEsibly)
 write.csv(exportres, "./data/gpdd_results_smap.csv", row.names = F)
 
 

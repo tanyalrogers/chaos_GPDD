@@ -33,6 +33,8 @@ length(which(gpdd_d$lle_pp>0.5))/length(which(!is.na(gpdd_d$lle_pp)))
 
 #regression method
 length(which(gpdd_d$LEregmin>0.01))/length(which(!is.na(gpdd_d$LEregmin)))
+#sibly method
+length(which(gpdd_d$LEsibly>0.01))/length(which(!is.na(gpdd_d$LEsibly)))
 
 # #gles are correlated, although some outliers
 # pairs(select(gpdd_d, gle1:gle5, gle))

@@ -11,61 +11,173 @@ source("./code/ggplot themes rogers.R")
 
 #load results
 #load("./data/sims_results_update.Rdata")
-sims_d=read.csv("./data/sims_test_results.csv")
+sims_d=read.csv("./data/sims_test_results.csv", stringsAsFactors = F)
 modelorder=unique(arrange(sims_d, Classification, Model)$Model)
 sims_d$Model=factor(sims_d$Model, levels=modelorder)
-
 #reclass noise level for stochastic ts
 sims_d$NoiseLevel2=ifelse(sims_d$NoiseLevel==0, 0.01, sims_d$NoiseLevel)
+sims_d$Classification2=ifelse(sims_d$Classification=="chaotic", "chaotic", "not chaotic")
 
-#class LEs
-sims_d$LEsign=ifelse(sims_d$LEmin>0.01, "chaotic", "not chaotic")
+#class LEs regression method
+sims_d$LEregmin=sims_d$LEreg-1.96*sims_d$LEreg_se
+sims_d$LEregclass=ifelse(sims_d$LEregmin>0.01, "chaotic", "not chaotic")
+#class LEs Jacobian method
+sims_d$LEclass=ifelse(sims_d$LEmin>0.01, "chaotic", "not chaotic")
+#class other methods
+RQAclass=read.csv("./data/RQAclassification.csv") %>% gather(SimNumber, RQAclass, Sim.1:Sim.100)
+PEclass=read.csv("./data/PEclassification.csv") %>% gather(SimNumber, PEclass, Sim.1:Sim.100)
+HVAclass=read.csv("./data/HVAclassification.csv") %>% gather(SimNumber, HVAclass, Sim.1:Sim.100)
+DTclass=read.csv("./data/DTclassification.csv") %>% gather(SimNumber, DTclass, Sim.1:Sim.100)
+#join to main table
+sims_d=left_join(sims_d, RQAclass) %>% left_join(PEclass) %>% 
+  left_join(HVAclass) %>% left_join(DTclass)
+#long format
+sims_long=gather(sims_d, Method, Methodclass, LEregclass:DTclass)
 
 #overall prop correct classification
-sims_d %>%
-  mutate(Classification2=ifelse(Classification=="chaotic", "chaotic", "not chaotic")) %>% 
-  group_by(Classification2,LEsign) %>% 
-  summarize(n=n()) %>% ungroup() %>% 
-  complete(Classification2, nesting(LEsign), 
-           fill=list(n=0)) %>% 
-  group_by(Classification2) %>% 
-  mutate(proportion=n/sum(n))
+sims_long %>%
+  group_by(Method, Classification2, Methodclass) %>% summarize(n=n()) %>% ungroup() %>% 
+  complete(Method, nesting(Classification2, Methodclass), fill=list(n=0)) %>% 
+  group_by(Method, Classification2) %>% mutate(proportion=n/sum(n)) %>% as.data.frame()
 
 #plots
 
 #proportion correct classifications, across all models
-sims_summary=sims_d %>% 
-  group_by(Classification,LEsign,NoiseLevel2,TSlength) %>% 
-  summarize(n=n()) %>% ungroup() %>% 
-  complete(Classification, nesting(LEsign,NoiseLevel2,TSlength), 
-           fill=list(n=0)) %>% 
-  group_by(NoiseLevel2,TSlength, Classification) %>% 
-  mutate(proportion=n/sum(n))
-ggplot(sims_summary, aes(x=LEsign, y=Classification, fill=proportion)) +
-  facet_grid(TSlength~NoiseLevel2) + 
-  geom_tile(stat = "identity") + classic +
+summary=sims_long %>% 
+  group_by(Method,Classification,Methodclass,NoiseLevel2,TSlength) %>% summarize(n=n()) %>% ungroup() %>% 
+  complete(Method,nesting(Classification, Methodclass,NoiseLevel2,TSlength), fill=list(n=0)) %>% 
+  group_by(NoiseLevel2,TSlength, Classification, Method) %>% mutate(proportion=n/sum(n))
+plotprop1=function(method, title) {
+  ggplot(filter(summary, Method==method), aes(x=Methodclass, y=Classification, fill=proportion)) +
+  facet_grid(TSlength~NoiseLevel2) + geom_tile(stat = "identity") + 
   geom_text(aes(label=round(proportion,2)), color="white") +
-  scale_x_discrete(expand = c(0,0)) +
-  scale_y_discrete(expand = c(0,0)) +
-  ylab("True Dynamics") + xlab("Classification") +
-  labs(fill="Proportion") 
+  classic + scale_x_discrete(expand = c(0,0)) + scale_y_discrete(expand = c(0,0)) +
+  labs(y="True Dynamics", x="Classification", fill="Proportion", title = title) 
+}
+plotprop1("LEregclass", "Regression LE")
+plotprop1("LEclass", "Jacobian LE")
+plotprop1("RQAclass", "RQA")
+plotprop1("PEclass", "PE")
+plotprop1("HVAclass", "HVA")
+plotprop1("DTclass", "DT")
 
 #proportion correct classifications, individual models
-sims_summary2=sims_d %>% 
-  group_by(Classification,NoiseLevel2,TSlength, Model) %>% 
-  summarize(LE_pp=length(which(LEsign=="chaotic"))/length(LEsign))
-ggplot(sims_summary2, aes(x=Model, y=LE_pp, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel2) + 
-  geom_bar(stat = "identity", color="black") + classic + xlabvert + ylab("Proportion Classified Chaotic") +
-  labs(fill="True\nModel\nDynamics") + 
-  scale_y_continuous(expand = c(0,0)) + scale_x_discrete(expand = c(0,0))
+summary2=sims_long %>% 
+  group_by(Method,Classification,NoiseLevel2,TSlength, Model) %>% 
+  summarize(LE_pp=length(which(Methodclass=="chaotic"))/length(Methodclass))
+plotprop2=function(method, title) {
+  ggplot(filter(summary2, Method==method), aes(x=Model, y=LE_pp, fill=Classification)) +
+    facet_grid(TSlength~NoiseLevel2) + classic + xlabvert +
+    geom_bar(stat = "identity", color="black") + 
+    labs(fill="True\nModel\nDynamics", y="Proportion Classified Chaotic", title=title) + 
+    scale_y_continuous(expand = c(0,0)) + scale_x_discrete(expand = c(0,0))
+}
+plotprop2("LEregclass", "Regression LE")
+plotprop2("LEclass", "Jacobian LE")
+plotprop2("RQAclass", "RQA")
+plotprop2("PEclass", "PE")
+plotprop2("HVAclass", "HVA")
+plotprop2("DTclass", "DT")
+
 #ggsave("./figures/SimClassLE.pdf", width = 12, height = 7)
+
+#validation data ####
+
+sims_v=read.csv("./data/sims_validation_results.csv")
+modelorderv=unique(arrange(sims_v, Classification, Model)$Model)
+sims_v$Model=factor(sims_v$Model, levels=modelorderv)
+#reclass noise level for stochastic ts
+sims_v$NoiseLevel2=ifelse(sims_v$NoiseLevel==0, 0.01, sims_v$NoiseLevel)
+sims_v$Classification2=ifelse(sims_v$Classification=="chaotic", "chaotic", "not chaotic")
+
+#class LEs regression method
+sims_v$LEregmin=sims_v$LEreg-1.96*sims_v$LEreg_se
+sims_v$LEregclass=ifelse(sims_v$LEregmin>0.01, "chaotic", "not chaotic")
+#class LEs jacobian method
+sims_v$LEclass=ifelse(sims_v$LEmin>0.01, "chaotic", "not chaotic")
+#class other methods
+# RQAclass=read.csv("./data/RQAclassification.csv") %>% gather(SimNumber, RQAclass, Sim.1:Sim.100)
+# PEclass=read.csv("./data/PEclassification.csv") %>% gather(SimNumber, PEclass, Sim.1:Sim.100)
+# HVAclass=read.csv("./data/HVAclassification.csv") %>% gather(SimNumber, HVAclass, Sim.1:Sim.100)
+# DTclass=read.csv("./data/DTclassification.csv") %>% gather(SimNumber, DTclass, Sim.1:Sim.100)
+#join to main table
+# sims_d=left_join(sims_v, RQAclass) %>% left_join(PEclass) %>% 
+#   left_join(HVAclass) %>% left_join(DTclass)
+#long format
+# sims_vlong=gather(sims_v, Method, Methodclass, LEregclass:DTclass)
+sims_vlong=gather(sims_v, Method, Methodclass, LEregclass:LEclass)
+
+#overall prop correct classification
+sims_vlong %>%
+  group_by(Method, Classification2, Methodclass) %>% summarize(n=n()) %>% ungroup() %>% 
+  complete(Method, nesting(Classification2, Methodclass), fill=list(n=0)) %>% 
+  group_by(Method, Classification2) %>% mutate(proportion=n/sum(n)) %>% as.data.frame()
+
+#plots
+
+#proportion correct classifications, across all models
+summary=sims_vlong %>% 
+  group_by(Method,Classification,Methodclass,NoiseLevel2,TSlength) %>% summarize(n=n()) %>% ungroup() %>% 
+  complete(Method,nesting(Classification, Methodclass,NoiseLevel2,TSlength), fill=list(n=0)) %>% 
+  group_by(NoiseLevel2,TSlength, Classification, Method) %>% mutate(proportion=n/sum(n))
+plotprop1("LEregclass", "Regression LE")
+plotprop1("LEclass", "Jacobian LE")
+plotprop1("RQAclass", "RQA")
+plotprop1("PEclass", "PE")
+plotprop1("HVAclass", "HVA")
+plotprop1("DTclass", "DT")
+
+#proportion correct classifications, individual models
+summary2=sims_vlong %>% 
+  group_by(Method,Classification,NoiseLevel2,TSlength, Model) %>% 
+  summarize(LE_pp=length(which(Methodclass=="chaotic"))/length(Methodclass))
+plotprop2("LEregclass", "Regression LE")
+plotprop2("LEclass", "Jacobian LE")
+plotprop2("RQAclass", "RQA")
+plotprop2("PEclass", "PE")
+plotprop2("HVAclass", "HVA")
+plotprop2("DTclass", "DT")
+
+#test and validation together ####
+
+#overall prop correct classification
+sims_long %>% rbind(sims_vlong) %>% 
+  group_by(Method, Classification2, Methodclass) %>% summarize(n=n()) %>% ungroup() %>% 
+  complete(Method, nesting(Classification2, Methodclass), fill=list(n=0)) %>% 
+  group_by(Method, Classification2) %>% mutate(proportion=n/sum(n)) %>% as.data.frame()
+
+#proportion correct classifications, across all models
+summary=rbind(sims_long, sims_vlong) %>% 
+  group_by(Method,Classification,Methodclass,NoiseLevel2,TSlength) %>% summarize(n=n()) %>% ungroup() %>% 
+  complete(Method,nesting(Classification, Methodclass,NoiseLevel2,TSlength), fill=list(n=0)) %>% 
+  group_by(NoiseLevel2,TSlength, Classification, Method) %>% mutate(proportion=n/sum(n))
+plotprop1("LEregclass", "Regression LE")
+plotprop1("LEclass", "Jacobian LE")
+plotprop1("RQAclass", "RQA")
+plotprop1("PEclass", "PE")
+plotprop1("HVAclass", "HVA")
+plotprop1("DTclass", "DT")
+
+#proportion correct classifications, individual models
+summary2=rbind(sims_long, sims_vlong) %>% 
+  group_by(Method,Classification,NoiseLevel2,TSlength, Model) %>% 
+  summarize(LE_pp=length(which(Methodclass=="chaotic"))/length(Methodclass))
+modelorder2=as.character(unique(arrange(summary2, Classification, Model)$Model))
+summary2$Model=factor(summary2$Model, levels=modelorder2)
+plotprop2("LEregclass", "Regression LE")
+plotprop2("LEclass", "Jacobian LE")
+plotprop2("RQAclass", "RQA")
+plotprop2("PEclass", "PE")
+plotprop2("HVAclass", "HVA")
+plotprop2("DTclass", "DT")
+
+# misc other plots ####
+
 #different arrangement
 ggplot(sims_summary2, aes(x=NoiseLevel2, y=LE_pp, fill=Classification)) +
   facet_grid(TSlength~Classification) + 
   geom_bar(stat = "identity", position = position_dodge2(), show.legend = F) + theme_bw() + xlabvert
 
-# misc other plots ####
 #LE across all models
 ggplot(sims_d, aes(x=NoiseLevel2, y=LEmin, color=Classification)) +
   facet_grid(TSlength~., scales = "free_y") + geom_hline(yintercept = 0) +
@@ -110,175 +222,3 @@ for(i in 1:length(tslengths)) {
           theme_bw() + ggtitle(paste("TSlength =", tslengths[i])) + xlim(c(-1,1)))
 }
 
-
-#validation data ####
-
-sims_v=read.csv("./data/sims_validation_results.csv")
-modelorderv=unique(arrange(sims_v, Classification, Model)$Model)
-sims_v$Model=factor(sims_v$Model, levels=modelorderv)
-
-#reclass noise level for stochastic ts
-sims_v$NoiseLevel2=ifelse(sims_v$NoiseLevel==0, 0.01, sims_v$NoiseLevel)
-
-#class LEs
-sims_v$LEsign=ifelse(sims_v$LEmin>0.01, "chaotic", "not chaotic")
-
-#overall prop correct classification
-sims_v %>% 
-  mutate(Classification2=ifelse(Classification=="chaotic", "chaotic", "not chaotic")) %>% 
-  group_by(Classification2,LEsign) %>% 
-  summarize(n=n()) %>% ungroup() %>% 
-  complete(Classification2, nesting(LEsign), 
-           fill=list(n=0)) %>% 
-  group_by(Classification2) %>% 
-  mutate(proportion=n/sum(n))
-
-#proportion correct classifications, across all models
-sims_summary2=sims_v %>% 
-  group_by(Classification,LEsign,NoiseLevel2,TSlength) %>% 
-  summarize(n=n()) %>% ungroup() %>% 
-  complete(Classification, nesting(LEsign,NoiseLevel2,TSlength), 
-           fill=list(n=0)) %>% 
-  group_by(NoiseLevel2,TSlength, Classification) %>% 
-  mutate(proportion=n/sum(n))
-ggplot(sims_summary2, aes(x=LEsign, y=Classification, fill=proportion)) +
-  facet_grid(TSlength~NoiseLevel2) + 
-  geom_tile(stat = "identity") + classic +
-  geom_text(aes(label=round(proportion,2)), color="white") +
-  scale_x_discrete(expand = c(0,0)) +
-  scale_y_discrete(expand = c(0,0)) +
-  ylab("True Dynamics") + xlab("Classification") +
-  labs(fill="Proportion")
-
-#proportion correct classifications, individual models
-sims_summary=sims_v %>%  
-  group_by(Classification,NoiseLevel2,TSlength, Model) %>% 
-  summarize(LE_pp=length(which(LEsign=="chaotic"))/length(LEsign))
-ggplot(sims_summary, aes(x=Model, y=LE_pp, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel2) + 
-  geom_bar(stat = "identity", color="black") + classic + xlabvert + ylab("Proportion Classified Chaotic") +
-  labs(fill="True\nModel\nDynamics") + 
-  scale_y_continuous(expand = c(0,0)) + scale_x_discrete(expand = c(0,0))
-
-#test and validation together overall classifications ####
-sims_d %>% rbind(sims_v) %>% 
-  mutate(Classification2=ifelse(Classification=="chaotic", "chaotic", "not chaotic")) %>% 
-  group_by(Classification2,LEsign) %>% 
-  summarize(n=n()) %>% ungroup() %>% 
-  complete(Classification2, nesting(LEsign), 
-           fill=list(n=0)) %>% 
-  group_by(Classification2) %>% 
-  mutate(proportion=n/sum(n))
-
-
-#regression method ####
-
-#test data
-
-#class LEs
-sims_d$LEregmin=sims_d$LEreg-1.96*sims_d$LEreg_se
-sims_d$LEregsign=ifelse(sims_d$LEreg>0.01, "chaotic", "not chaotic")
-sims_d$LEregsign2=ifelse(sims_d$LEregmin>0.01, "chaotic", "not chaotic")
-
-#overall prop correct classification
-sims_d %>% 
-  mutate(Classification2=ifelse(Classification=="chaotic", "chaotic", "not chaotic")) %>% 
-  group_by(Classification2,LEregsign2) %>% 
-  summarize(n=n()) %>% ungroup() %>% 
-  complete(Classification2, nesting(LEregsign2), 
-           fill=list(n=0)) %>% 
-  group_by(Classification2) %>% 
-  mutate(proportion=n/sum(n))
-
-#proportion correct classifications, across all models
-sims_summary=sims_d %>% 
-  group_by(Classification,LEregsign2,NoiseLevel2,TSlength) %>% 
-  summarize(n=n()) %>% ungroup() %>% 
-  complete(Classification, nesting(LEregsign2,NoiseLevel2,TSlength), 
-           fill=list(n=0)) %>% 
-  group_by(NoiseLevel2,TSlength, Classification) %>% 
-  mutate(proportion=n/sum(n))
-ggplot(sims_summary, aes(x=LEregsign2, y=Classification, fill=proportion)) +
-  facet_grid(TSlength~NoiseLevel2) + 
-  geom_tile(stat = "identity") + classic +
-  geom_text(aes(label=round(proportion,2)), color="white") +
-  scale_x_discrete(expand = c(0,0)) +
-  scale_y_discrete(expand = c(0,0)) +
-  ylab("True Dynamics") + xlab("Classification") +
-  labs(fill="Proportion")
-
-#proportion correct classifications, individual models
-sims_summaryreg=sims_d %>% 
-  group_by(Classification,NoiseLevel2,TSlength, Model) %>% 
-  summarize(LEreg_pp=length(which(LEregsign=="chaotic"))/length(LEregsign),
-            LEreg_pp2=length(which(LEregsign2=="chaotic"))/length(LEregsign2))
-ggplot(sims_summaryreg, aes(x=Model, y=LEreg_pp2, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel2) + 
-  geom_bar(stat = "identity", color="black") + classic + xlabvert + ylab("Proportion Classified Chaotic") +
-  labs(fill="True\nModel\nDynamics") + 
-  scale_y_continuous(expand = c(0,0)) + scale_x_discrete(expand = c(0,0))
-
-#LE across all models 
-ggplot(sims_d, aes(x=NoiseLevel2, y=LEregmin, color=Classification)) +
-  facet_grid(TSlength~.) + geom_hline(yintercept = 0) +
-  geom_point(position = position_dodge(0.02)) + theme_bw()
-#LE individual models
-ggplot(sims_d, aes(x=Model, y=LEregmin, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel, scales = "free_y") + geom_hline(yintercept = 0) +
-  geom_point() + #geom_boxplot() + 
-  theme_bw() + xlabvert
-
-#validation data
-
-#class LEs
-sims_v$LEregmin=sims_v$LEreg-1.96*sims_v$LEreg_se
-sims_v$LEregsign=ifelse(sims_v$LEreg>0.01, "chaotic", "not chaotic")
-sims_v$LEregsign2=ifelse(sims_v$LEregmin>0.01, "chaotic", "not chaotic")
-
-#overall prop correct classification
-sims_v %>% 
-  mutate(Classification2=ifelse(Classification=="chaotic", "chaotic", "not chaotic")) %>% 
-  group_by(Classification2,LEregsign2) %>% 
-  summarize(n=n()) %>% ungroup() %>% 
-  complete(Classification2, nesting(LEregsign2), 
-           fill=list(n=0)) %>% 
-  group_by(Classification2) %>% 
-  mutate(proportion=n/sum(n))
-
-#proportion correct classifications, across all models
-sims_summary=sims_v %>% 
-  group_by(Classification,LEregsign2,NoiseLevel2,TSlength) %>% 
-  summarize(n=n()) %>% ungroup() %>% 
-  complete(Classification, nesting(LEregsign2,NoiseLevel2,TSlength), 
-           fill=list(n=0)) %>% 
-  group_by(NoiseLevel2,TSlength, Classification) %>% 
-  mutate(proportion=n/sum(n))
-ggplot(sims_summary, aes(x=LEregsign2, y=Classification, fill=proportion)) +
-  facet_grid(TSlength~NoiseLevel2) + 
-  geom_tile(stat = "identity") + classic +
-  geom_text(aes(label=round(proportion,2)), color="white") +
-  scale_x_discrete(expand = c(0,0)) +
-  scale_y_discrete(expand = c(0,0)) +
-  ylab("True Dynamics") + xlab("Classification") +
-  labs(fill="Proportion")
-
-#proportion correct classifications, individual models
-sims_summaryreg=sims_v %>% 
-  group_by(Classification,NoiseLevel2,TSlength, Model) %>% 
-  summarize(LEreg_pp=length(which(LEregsign=="chaotic"))/length(LEregsign),
-            LEreg_pp2=length(which(LEregsign2=="chaotic"))/length(LEregsign2))
-ggplot(sims_summaryreg, aes(x=Model, y=LEreg_pp2, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel2) + 
-  geom_bar(stat = "identity", color="black") + classic + xlabvert + ylab("Proportion Classified Chaotic") +
-  labs(fill="True\nModel\nDynamics") + 
-  scale_y_continuous(expand = c(0,0)) + scale_x_discrete(expand = c(0,0))
-
-#test and validation together overall classifications
-sims_d %>% rbind(sims_v) %>% 
-  mutate(Classification2=ifelse(Classification=="chaotic", "chaotic", "not chaotic")) %>% 
-  group_by(Classification2,LEregsign2) %>% 
-  summarize(n=n()) %>% ungroup() %>% 
-  complete(Classification2, nesting(LEregsign2), 
-           fill=list(n=0)) %>% 
-  group_by(Classification2) %>% 
-  mutate(proportion=n/sum(n))
