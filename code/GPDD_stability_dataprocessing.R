@@ -71,6 +71,8 @@ gpdd_filter <- gpdd_join %>%
   filter(MainID!=2774) %>% #exclude shorter of duplicate series
   filter(MainID!=1870) %>% #exclude shorter of duplicate series
   filter(MainID!=9308) %>% #exclude lower quality of duplicate series
+  filter(MainID!=9685) %>% #exclude disease series
+  filter(MainID!=9686) %>% #exclude disease series
   droplevels()
 
 #filter data, join timeperiod info, nest by MainID
@@ -106,9 +108,6 @@ sampling_interval=function(unTimePeriodID, data) {
 }
 gpdd_d_nest$SamplingInterval=map2_chr(gpdd_d_nest$unTimePeriodID, gpdd_d_nest$data, sampling_interval) 
 
-#select focal taxon classes
-focal_taxa=c("Aves","Osteichthyes", "Mammalia", "Bacillariophyceae", "Insecta")
-
 #function for timescale ratios
 timescale_ratio=function(SamplingInterval, num, den_mo) {
   ifelse(SamplingInterval=="annual", num/(den_mo/12),
@@ -120,6 +119,9 @@ timescale_ratio=function(SamplingInterval, num, den_mo) {
   
 }
 
+#identify taxon classes, all others are zooplankton
+focal_taxa=c("Aves","Osteichthyes", "Mammalia", "Bacillariophyceae", "Dinophyceae", "Insecta")
+
 #PRIMARY NESTED TABLE
 gpdd_d <- gpdd_filter %>%
   #join nested data, location info, life history info to filtered main table
@@ -128,14 +130,15 @@ gpdd_d <- gpdd_filter %>%
   left_join(select(gpdd_location, LocationID, ExactName, Country, Continent, LongDD, LatDD, SpatialAccuracy, LocationExtent),by="LocationID") %>% 
   #relabel taxon classes
   #compute timescale metrics
-  mutate(TaxonomicClass2=ifelse(TaxonomicClass %in% focal_taxa, as.character(TaxonomicClass), "Other"),
+  mutate(TaxonomicClass2=ifelse(TaxonomicClass %in% focal_taxa, as.character(TaxonomicClass), "Zooplankton"),
+         TaxonomicClass3=recode(TaxonomicClass2,Aves="Birds",Osteichthyes="Bony fishes",Mammalia="Mammals",Bacillariophyceae="Phytoplankton",Dinophyceae="Phytoplankton",Insecta="Insects"),
          timescale_MinAge=timescale_ratio(SamplingInterval, datasetlength, MinAge_mo),
          timescale_Lifespan=timescale_ratio(SamplingInterval, datasetlength, Lifespan_mo),
          timestep_MinAge=timescale_ratio(SamplingInterval, 1, MinAge_mo),
          timestep_Lifespan=timescale_ratio(SamplingInterval, 1, Lifespan_mo)) %>% 
   #subset/reorder columns
   select(MainID:LocationID, TaxonName, CommonName, Reliability, SamplingInterval, 
-         datasetlength:propmissing, TaxonomicPhylum:TaxonomicGenus, TaxonomicClass2, 
+         datasetlength:propmissing, TaxonomicPhylum:TaxonomicGenus, TaxonomicClass2, TaxonomicClass3, 
          TaxonomicLevel, Mass_g:TrL, timescale_MinAge:timestep_Lifespan, ExactName:LocationExtent, SamplingUnits, SourceTransform, Notes=Notes.x,
          data) %>% 
   #remove daily dataset
