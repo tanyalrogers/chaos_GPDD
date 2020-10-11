@@ -313,256 +313,52 @@ sims_v$modelform=map_chr(sims_vresults$modelresultsbest, ~.x$form)
 vexport=select(sims_v, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, LEmean=minmean, LEmin=minci, LEreg, LEreg_se)
 write.csv(vexport,"./data/sims_validation_results.csv", row.names = F)
 
-#testing ####
-ser_or=sims_test[4,]$data[[1]]$Value
+#merge with results from other methods ####
 
-# #best hyperparameters
-# sims_results$hyperpars=map(sims_d$data, besthyper, y="Value")
-# sims_d=cbind(sims_d, bind_rows(sims_results$hyperpars))
-# sims_d2=rbind(sims_d2, sims_d)
+#test data 
+#load("./data/sims_results_update.Rdata")
+sims_d=read.csv("./data/sims_test_results.csv", stringsAsFactors = F)
+modelorder=unique(arrange(sims_d, Classification, Model)$Model)
+sims_d$Model=factor(sims_d$Model, levels=modelorder)
+#reclass noise level for stochastic ts
+sims_d$NoiseLevel2=ifelse(sims_d$NoiseLevel==0, 0.01, sims_d$NoiseLevel)
+sims_d$Classification2=ifelse(sims_d$Classification=="chaotic", "chaotic", "not chaotic")
+#class LEs regression method
+sims_d$LEregmin=sims_d$LEreg-1.96*sims_d$LEreg_se
+sims_d$LEregclass=ifelse(sims_d$LEregmin>0.01, "chaotic", "not chaotic")
+#class LEs Jacobian method
+sims_d$LEclass=ifelse(sims_d$LEmin>0.01, "chaotic", "not chaotic")
+#class other methods
+RQAclass=read.csv("./data/RQAclassification.csv") %>% gather(SimNumber, RQAclass, Sim.1:Sim.100)
+PEclass=read.csv("./data/PEclassification.csv") %>% gather(SimNumber, PEclass, Sim.1:Sim.100)
+HVAclass=read.csv("./data/HVAclassification.csv") %>% gather(SimNumber, HVAclass, Sim.1:Sim.100)
+DTclass=read.csv("./data/DTclassification.csv") %>% gather(SimNumber, DTclass, Sim.1:Sim.100)
+#join to main table
+sims_d=left_join(sims_d, RQAclass) %>% left_join(PEclass) %>% 
+  left_join(HVAclass) %>% left_join(DTclass)
 
-sims_test=filter(sims_d, Model %in% c("HostParParPeriodic") & TSlength==25)
-sims_test=filter(sims_d, Model %in% c("HostParParChaotic"))
-sims_test_results=filter(sims_results, ID %in% sims_test$ID)
+#validation data
+sims_v=read.csv("./data/sims_validation_results.csv", stringsAsFactors = F)
+modelorderv=unique(arrange(sims_v, Classification, Model)$Model)
+sims_v$Model=factor(sims_v$Model, levels=modelorderv)
+#reclass noise level for stochastic ts
+sims_v$NoiseLevel2=ifelse(sims_v$NoiseLevel==0, 0.01, sims_v$NoiseLevel)
+sims_v$Classification2=ifelse(sims_v$Classification=="chaotic", "chaotic", "not chaotic")
+#class LEs regression method
+sims_v$LEregmin=sims_v$LEreg-1.96*sims_v$LEreg_se
+sims_v$LEregclass=ifelse(sims_v$LEregmin>0.01, "chaotic", "not chaotic")
+#class LEs jacobian method
+sims_v$LEclass=ifelse(sims_v$LEmin>0.01, "chaotic", "not chaotic")
+#class other methods
+RQAclassv=read.csv("./data/RQAclassification_validation.csv") %>% gather(SimNumber, RQAclass, Sim.1:Sim.100)
+PEclassv=read.csv("./data/PEclassification_validation.csv") %>% gather(SimNumber, PEclass, Sim.1:Sim.100)
+HVAclassv=read.csv("./data/HVAclassification_validation.csv") %>% gather(SimNumber, HVAclass, Sim.1:Sim.100)
+DTclassv=read.csv("./data/DTclassification_validation.csv") %>% gather(SimNumber, DTclass, Sim.1:Sim.100)
+#join to main table
+sims_v=left_join(sims_v, RQAclassv) %>% left_join(PEclassv) %>%
+  left_join(HVAclassv) %>% left_join(DTclassv)
 
-sims_test_results$hpar4=map(sims_test$data, besthyper, y="Value", ylog=F, pgr="gr",returntable=T)
-sims_test_results$hpar1=map(sims_test$data, besthyper, y="Value", ylog=F, pgr="none",returntable=T)
+#write data
+write.csv(sims_d, "./data/sims_test_results_allmethods.csv", row.names = F)
+write.csv(sims_v, "./data/sims_validation_results_allmethods.csv", row.names = F)
 
-res1=cbind(select(sims_test, ID:SimNumber), map_df(sims_test_results$hpar1, function(x) {
-  model_selection=arrange(x, tau, theta, E)
-  #model_selection=arrange(x, E, tau, theta)
-  bestE=model_selection$E[which.min(model_selection$error)]
-  bestTau=model_selection$tau[which.min(model_selection$error)]
-  bestTheta=model_selection$theta[which.min(model_selection$error)]
-  return(data.frame(bestE=bestE, bestTau=bestTau, bestTheta=bestTheta))
-}))
-
-ggplot(res1, aes(x=bestE, y=bestTau, color=Model)) +
-  facet_grid(TSlength~NoiseLevel) + 
-  geom_point(alpha=0.5, size=3) + theme_bw()
-
-sims_test_results$hparsum4=map(sims_test_results$hpar4, function(x) {
-  model_selection=arrange(x, tau, theta, E) #%>% filter(tau==1)
-  #model_selection=arrange(x, E, tau, theta)
-  bestE=model_selection$E[which.min(model_selection$error)]
-  bestTau=model_selection$tau[which.min(model_selection$error)]
-  bestTheta=model_selection$theta[which.min(model_selection$error)]
-  return(data.frame(bestE=bestE, bestTau=bestTau, bestTheta=bestTheta, Emax=max(model_selection$E), taumax=max(model_selection$tau)))
-})
-sims_test_results$modelresults4=map2(sims_test$data, sims_test_results$hparsum4, smap_model_options, y="Value", model=4)
-sims_test_results$jacobians4=map(sims_test_results$modelresults4, getJacobians)
-sims_test_results$stability4=map2(sims_test_results$modelresults4, sims_test_results$jacobians4, getStability)
-sims_test$gle4=map_dbl(sims_test_results$stability4, ~.x$gle)
-sims_test$Ebest4=map_dbl(sims_test_results$modelresults4, ~.x$modelstats$E)
-sims_test$taubest4=map_dbl(sims_test_results$modelresults4, ~.x$modelstats$tau)
-sims_test$thetabest4=map_dbl(sims_test_results$modelresults4, ~.x$modelstats$theta)
-sims_test$R4a=map_dbl(sims_test_results$modelresults4, ~.x$modelstats$R2abund)
-sims_test$gle_class4=ifelse(sims_test$gle4>0.05, "chaotic", "not chaotic")
-sims_test$LEshift4=map2(sims_test_results$modelresults4, sims_test_results$jacobians4, LEshift)
-sims_test$minmean=map_dbl(sims_test$LEshift4, ~.x$minmean)
-sims_test$minci=map_dbl(sims_test$LEshift4, ~.x$minci)
-sims_test$LEs_class4=ifelse(sims_test$minci>0.05, "chaotic", "not chaotic")
-
-sims_test_results$hparsum1=map(sims_test_results$hpar1, function(x) {
-  model_selection=arrange(x, tau, theta, E) #%>% filter(tau==1)
-  #model_selection=arrange(x, E, tau, theta)
-  bestE=model_selection$E[which.min(model_selection$error)]
-  bestTau=model_selection$tau[which.min(model_selection$error)]
-  bestTheta=model_selection$theta[which.min(model_selection$error)]
-  return(data.frame(bestE=bestE, bestTau=bestTau, bestTheta=bestTheta, Emax=max(model_selection$E), taumax=max(model_selection$tau)))
-})
-sims_test_results$modelresults1=map2(sims_test$data, sims_test_results$hparsum1, smap_model_options, y="Value", model=1)
-sims_test_results$jacobians1=map(sims_test_results$modelresults1, getJacobians)
-sims_test_results$stability1=map2(sims_test_results$modelresults1, sims_test_results$jacobians1, getStability)
-sims_test$gle1=map_dbl(sims_test_results$stability1, ~.x$gle)
-sims_test$Ebest1=map_dbl(sims_test_results$modelresults1, ~.x$modelstats$E)
-sims_test$taubest1=map_dbl(sims_test_results$modelresults1, ~.x$modelstats$tau)
-sims_test$thetabest1=map_dbl(sims_test_results$modelresults1, ~.x$modelstats$theta)
-sims_test$R1a=map_dbl(sims_test_results$modelresults1, ~.x$modelstats$R2abund)
-sims_test$gle_class1=ifelse(sims_test$gle1>0.05, "chaotic", "not chaotic")
-sims_test$LEshift1=map2(sims_test_results$modelresults1, sims_test_results$jacobians1, LEshift)
-sims_test$minmean1=map_dbl(sims_test$LEshift1, ~.x$minmean)
-sims_test$minci1=map_dbl(sims_test$LEshift1, ~.x$minci)
-sims_test$LEs_class1=ifelse(sims_test$minci1>0.05, "chaotic", "not chaotic")
-
-sims_summary=sims_test %>% select(-data) %>% 
-  group_by(Classification,NoiseLevel,TSlength, Model) %>% 
-  summarize(gle4_pp=length(which(gle4>0.0))/length(gle4),
-            gle4_pp.01=length(which(gle4>0.01))/length(gle4),
-            gle4_pp.05=length(which(gle4>0.05))/length(gle4),
-            minci_pp=length(which(minci>0.0))/length(minci),
-            minci_pp.01=length(which(minci>0.01))/length(minci),
-            minci_pp.05=length(which(minci>0.05))/length(minci),
-            minci1_pp=length(which(minci1>0.0))/length(minci1),
-            minci1_pp.01=length(which(minci1>0.01))/length(minci1),
-            minci1_pp.05=length(which(minci1>0.05))/length(minci1))
-ggplot(sims_summary, aes(x=Model, y=minci1_pp.01, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel) + ggtitle("tau, theta, E") +
-  geom_bar(stat = "identity") + theme_bw() + xlabvert
-
-ggplot(sims_test, aes(x=Model, y=gle4, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel) + geom_hline(yintercept = 0) + geom_hline(yintercept = 0.05, lty=2) +
-  geom_point(alpha=0.3, size=2) + theme_bw() + xlabvert + legalpha
-
-#save(sims_test, sims_test_results, file = "./data/sims_results_problemmodel.Rdata")
-
-
-sims_test_results$modelresults1=map(sims_test$data, smap_model_options, y="Value", model=1)
-sims_test_results$modelresults4=map(sims_test$data, smap_model_options, y="Value", model=4)
-sims_test_results$modelresults1b=pmap(list(sims_test$data, taufix=sims_test$Tau), smap_model_options, y="Value", model=1)
-sims_test_results$modelresults1c=pmap(list(sims_test$data, Efix=sims_test$E, taufix=sims_test$Tau), smap_model_options, y="Value", model=1)
-sims_test_results$modelresults1d=map(sims_test$data, smap_model_options, y="Value", model=1, taufix=2, Efix=3)
-sims_test_results$jacobians1=map(sims_test_results$modelresults1, getJacobians)
-sims_test_results$jacobians4=map(sims_test_results$modelresults4, getJacobians)
-sims_test_results$jacobians1b=map(sims_test_results$modelresults1b, getJacobians)
-sims_test_results$jacobians1c=map(sims_test_results$modelresults1c, getJacobians)
-sims_test_results$jacobians1d=map(sims_test_results$modelresults1d, getJacobians)
-sims_test_results$stability1=map2(sims_test_results$modelresults1, sims_test_results$jacobians1, getStability)
-sims_test_results$stability4=map2(sims_test_results$modelresults4, sims_test_results$jacobians4, getStability)
-sims_test_results$stability1b=map2(sims_test_results$modelresults1b, sims_test_results$jacobians1b, getStability)
-sims_test_results$stability1c=map2(sims_test_results$modelresults1c, sims_test_results$jacobians1c, getStability)
-sims_test_results$stability1d=map2(sims_test_results$modelresults1d, sims_test_results$jacobians1d, getStability)
-sims_test$gle1=map_dbl(sims_test_results$stability1, ~.x$gle)
-sims_test$gle4=map_dbl(sims_test_results$stability4, ~.x$gle)
-sims_test$gle1b=map_dbl(sims_test_results$stability1b, ~.x$gle)
-sims_test$gle1c=map_dbl(sims_test_results$stability1c, ~.x$gle)
-sims_test$gle1d=map_dbl(sims_test_results$stability1d, ~.x$gle)
-sims_test$Ebest1=map_dbl(sims_test_results$modelresults1, ~.x$modelstats$E)
-sims_test$Ebest4=map_dbl(sims_test_results$modelresults4, ~.x$modelstats$E)
-sims_test$Ebest1b=map_dbl(sims_test_results$modelresults1b, ~.x$modelstats$E)
-sims_test$Ebest1c=map_dbl(sims_test_results$modelresults1c, ~.x$modelstats$E)
-sims_test$Ebest1d=map_dbl(sims_test_results$modelresults1d, ~.x$modelstats$E)
-sims_test$taubest1=map_dbl(sims_test_results$modelresults1, ~.x$modelstats$tau)
-sims_test$taubest4=map_dbl(sims_test_results$modelresults4, ~.x$modelstats$tau)
-sims_test$taubest1b=map_dbl(sims_test_results$modelresults1b, ~.x$modelstats$tau)
-sims_test$thetabest1=map_dbl(sims_test_results$modelresults1, ~.x$modelstats$theta)
-sims_test$thetabest4=map_dbl(sims_test_results$modelresults4, ~.x$modelstats$theta)
-sims_test$thetabest1d=map_dbl(sims_test_results$modelresults1d, ~.x$modelstats$theta)
-sims_test$R1a=map_dbl(sims_test_results$modelresults1, ~.x$modelstats$R2abund)
-sims_test$R4a=map_dbl(sims_test_results$modelresults4, ~.x$modelstats$R2abund)
-sims_test$gle_class4=ifelse(sims_test$gle4>0.01, "chaotic", "not chaotic")
-
-sims_summary=sims_test %>% select(-data) %>% 
-  group_by(Classification,NoiseLevel,TSlength, Model) %>% 
-  summarize(gle4_pp=length(which(gle4>0.0))/length(gle4),
-            gle4_pp.01=length(which(gle4>0.01))/length(gle4),
-            gle4_pp.05=length(which(gle4>0.05))/length(gle4))
-            # gle1b_pp=length(which(gle1b>0.0))/length(gle1b),
-            # gle1b_pp.01=length(which(gle1b>0.01))/length(gle1b),
-            # gle1c_pp=length(which(gle1c>0.0))/length(gle1c),
-            # gle1c_pp.01=length(which(gle1c>0.01))/length(gle1c),
-            # gle1d_pp=length(which(gle1d>0.0))/length(gle1d),
-            # gle1d_pp.01=length(which(gle1d>0.01))/length(gle1d))
-ggplot(sims_summary, aes(x=factor(NoiseLevel), y=gle4_pp.05)) +
-  facet_grid(TSlength~.) + 
-  geom_bar(stat = "identity") + theme_bw()
-ggplot(sims_summary, aes(x=Model, y=gle4_pp.05, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel) + ggtitle("tau, E, theta") +
-  geom_bar(stat = "identity") + theme_bw() + xlabvert
-
-
-sims_test_results$modelresults2=map(sims_test$data, smap_model, y="Value", ylog=T)
-sims_test_results$modelresults5=map(sims_test$data, smap_model, y="Value", ylog=F, taufix=2, Efix=4)
-sims_test_results$jacobians1=map(sims_test_results$modelresults1, getJacobians)
-sims_test_results$jacobians2=map(sims_test_results$modelresults2, getJacobians)
-sims_test_results$jacobians5=map(sims_test_results$modelresults5, getJacobians)
-sims_test_results$stability1=map2(sims_test_results$modelresults1, sims_test_results$jacobians1, getStability)
-sims_test_results$stability2=map2(sims_test_results$modelresults2, sims_test_results$jacobians2, getStability)
-sims_test_results$stability5=map2(sims_test_results$modelresults5, sims_test_results$jacobians5, getStability)
-
-sims_test$LEshift1=map2_dbl(sims_test_results$modelresults1, sims_test_results$jacobians1, LEshift)
-sims_test$LEshift2=map2_dbl(sims_test_results$modelresults2, sims_test_results$jacobians2, LEshift)
-sims_test$LEshift5=map2_dbl(sims_test_results$modelresults5, sims_test_results$jacobians5, LEshift)
-sims_test$LEshiftbest=map2_dbl(sims_test_results$modelresults2, sims_test_results$jacobians2, LEshift)
-sims_test$gle1=map_dbl(sims_test_results$stability1, ~.x$gle)
-sims_test$gle2=map_dbl(sims_test_results$stability2, ~.x$gle)
-sims_test$gle5=map_dbl(sims_test_results$stability5, ~.x$gle)
-sims_test$Ebest1=map_dbl(sims_test_results$modelresults1, ~.x$modelstats$E)
-sims_test$Ebest2=map_dbl(sims_test_results$modelresults2, ~.x$modelstats$E)
-sims_test$Ebest5=map_dbl(sims_test_results$modelresults5, ~.x$modelstats$E)
-sims_test$taubest1=map_dbl(sims_test_results$modelresults1, ~.x$modelstats$tau)
-sims_test$taubest2=map_dbl(sims_test_results$modelresults2, ~.x$modelstats$tau)
-sims_test$thetabest1=map_dbl(sims_test_results$modelresults1, ~.x$modelstats$theta)
-sims_test$thetabest2=map_dbl(sims_test_results$modelresults2, ~.x$modelstats$theta)
-sims_test$R1a=map_dbl(sims_test_results$modelresults1, ~.x$modelstats$R2abund)
-sims_test$R2a=map_dbl(sims_test_results$modelresults2, ~.x$modelstats$R2abund)
-sims_test$R5a=map_dbl(sims_test_results$modelresults5, ~.x$modelstats$R2abund)
-
-sims_test$bestmodel=select(sims_test,R1a,R2a) %>% apply(1,which.max)
-sims_test$R2best=select(sims_test,R1a,R2a) %>% apply(1,max)
-sims_test$glebest=apply(sims_test, 1, FUN=function(x) {unlist(x[paste0("gle",x$bestmodel)])})
-sims_test$LEshiftbest=apply(sims_test, 1, FUN=function(x) {unlist(x[paste0("LEshift",x$bestmodel)])})
-sims_test$Ebest=apply(sims_test, 1, FUN=function(x) {unlist(x[paste0("Ebest",x$bestmodel)])})
-sims_test$taubest=apply(sims_test, 1, FUN=function(x) {unlist(x[paste0("taubest",x$bestmodel)])})
-
-sims_summary=sims_test %>% select(-data) %>% 
-  group_by(Classification,NoiseLevel,TSlength, Model) %>% 
-  summarize(glebest_pp=length(which(glebest>0.0))/length(gle1),
-            glebest_pp.01=length(which(glebest>0.01))/length(gle1),
-            glebest_pp.05=length(which(glebest>0.05))/length(gle1),
-            LEshiftbest_pp=length(which(LEshiftbest>0))/length(LEshift1),
-            LEshiftbest_pp.01=length(which(LEshiftbest>0.01))/length(LEshift1),
-            LEshiftbest_pp.05=length(which(LEshiftbest>0.05))/length(LEshift1),
-            gle2_pp=length(which(gle2>0.0))/length(gle2),
-            gle2_pp.01=length(which(gle2>0.01))/length(gle2),
-            gle2_pp.05=length(which(gle2>0.05))/length(gle2),
-            LEshift2_pp=length(which(LEshift2>0))/length(LEshift2),
-            LEshift2_pp.01=length(which(LEshift2>0.01))/length(LEshift2),
-            LEshift2_pp.05=length(which(LEshift2>0.05))/length(LEshift2))
-
-
-ggplot(sims_test, aes(x=Model, y=taubest, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel, scales = "free_y") + geom_hline(yintercept = 0) +
-  geom_point(alpha=0.3) + theme_bw() + xlabvert + legalpha
-
-ggplot(sims_summary, aes(x=Model, y=gle1_pp.01, fill=Classification)) +
-  facet_grid(TSlength~NoiseLevel, scales = "free_y") + 
-  geom_bar(stat = "identity") + theme_bw() + xlabvert
-ggplot(sims_summary, aes(x=factor(NoiseLevel), y=gle1d_pp.01)) +
-  facet_grid(TSlength~., scales = "free_y") + 
-  geom_bar(stat = "identity") + theme_bw()
-#
-
-sims_zero=filter(sims_test, Model=="HostParParPeriodic" & NoiseLevel==0 & TSlength>25)
-sims_zero_results=filter(sims_test_results, ID %in% sims_zero$ID)
-
-sims_zero_results$modelresults5=map(sims_zero$data, smap_model, y="Value", ylog=F, taufix=1, Efix=3)
-sims_zero_results$jacobians5=map(sims_zero_results$modelresults5, getJacobians)
-sims_zero_results$stability5=map2(sims_zero_results$modelresults5, sims_zero_results$jacobians5, getStability)
-sims_zero$gle5=map_dbl(sims_zero_results$stability5, ~.x$gle)
-sims_zero$LEshift5=map2_dbl(sims_zero_results$modelresults5, sims_zero_results$jacobians5, LEshift)
-
-ggplot(filter(sims_test, Model=="HostParParPeriodic"), aes(x=Ebest, y=taubest)) +
-  facet_grid(TSlength~NoiseLevel) +
-  geom_point(x=4, y=2, color="red", size=2)+
-  geom_point(alpha=0.3) + theme_bw()
-
-# rescale=function(Model, data) {
-#   if(Model %in% c("PredatorPreyPeriodic", "PredatorPreyChaotic", "HostParParPeriodic", "HostParParChaotic")) {
-#     data$Value=log(data$Value)
-#   }
-#   return(as.data.frame(data))
-# }
-# sims_test$data_rescale=map2(sims_test$Model, sims_test$data, rescale)
-
-sims_test_results$jacobians1=map(sims_test_results$modelresults2, getJacobians)
-sims_test_results$stability1=map2(sims_test_results$modelresults2, sims_test_results$jacobians1, getStability)
-
-sims_test_results$modelresults1b=map_if(sims_test$data_rescale, sims_test$Model %in% c("PredatorPreyPeriodic", "PredatorPreyChaotic", "HostParParPeriodic", "HostParParChaotic"),
-                                        smap_model, y="Value", ylog=F)
-sims_test_results$modelresults1b=ifelse(sims_test$Model %in% c("PredatorPreyPeriodic", "PredatorPreyChaotic", "HostParParPeriodic", "HostParParChaotic"),
-                                        sims_test_results$modelresults1b, sims_test_results$modelresults1)
-sims_test_results$jacobians1b=map(sims_test_results$modelresults1b, getJacobians)
-sims_test_results$stability1b=map2(sims_test_results$modelresults1b, sims_test_results$jacobians1b, getStability)
-sims_test$LEshift=map2_dbl(sims_test_results$modelresults1b, sims_test_results$jacobians1b, LEshift)
-sims_test$gle=map_dbl(sims_test_results$stability1b, ~.x$gle)
-sims_test$R1a=map_dbl(sims_test_results$modelresults1, ~.x$modelstats$R2abund)
-
-# #external E and tau
-# simE=read.csv("./data/ESimulatedNEW.csv")
-# simtau=read.csv("./data/TauSimulatedNEW.csv")
-# sims_E=select(simE, ID, Sim.1:Sim.5) %>% 
-#   gather(SimNumber, E, Sim.1:Sim.5)
-# sims_tau=select(simtau, ID, Sim.1:Sim.5) %>% 
-#   gather(SimNumber, Tau, Sim.1:Sim.5)
-# sims_Etau=left_join(sims_E, sims_tau, by=c("ID", "SimNumber"))
