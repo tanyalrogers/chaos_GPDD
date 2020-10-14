@@ -126,7 +126,7 @@ focal_taxa=c("Aves","Osteichthyes", "Mammalia", "Bacillariophyceae", "Dinophycea
 gpdd_d <- gpdd_filter %>%
   #join nested data, location info, life history info to filtered main table
   left_join(gpdd_d_nest,by="MainID") %>% 
-  left_join(select(gpdd_lifehistory, MainID, Biome, Mass_g:TrL),by="MainID") %>% 
+  left_join(select(gpdd_lifehistory, MainID, Biome, Temp_C, Mass_g:TrL),by="MainID") %>% 
   left_join(select(gpdd_location, LocationID, ExactName, Country, Continent, LongDD, LatDD),by="LocationID") %>% 
   #relabel taxon classes
   #compute timescale metrics
@@ -139,7 +139,7 @@ gpdd_d <- gpdd_filter %>%
   #subset/reorder columns
   select(MainID:LocationID, TaxonName, CommonName, Reliability, SamplingInterval, 
          datasetlength:propmissing, TaxonomicPhylum:TaxonomicGenus, TaxonomicClass2, TaxonomicClass3, 
-         TaxonomicLevel, Mass_g:TrL, timescale_MinAge:timestep_Lifespan, ExactName:LatDD, Biome, SamplingUnits, SourceTransform, Notes=Notes.x,
+         TaxonomicLevel, Mass_g:TrL, timescale_MinAge:timestep_Lifespan, ExactName:LatDD, Biome, Temp_C, SamplingUnits, SourceTransform, Notes=Notes.x,
          data) %>% 
   #remove daily dataset
   filter(SamplingInterval!="daily") %>% 

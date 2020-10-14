@@ -475,7 +475,7 @@ LEshift=function(modelresults, jacobians, samplinginterval="monthly") {
   serlen=max(runlen$lengths[runlen$values==TRUE])
   
   Tminus=3:6
-  LEseg=data.frame(SegLen=(serlen-max(Tminus)):(serlen-min(Tminus)), le_mean=NA, le_sd=NA, le_ci=NA, le_n=NA, le_var_mo=NA) %>% 
+  LEseg=data.frame(SegLen=(serlen-max(Tminus)):(serlen-min(Tminus)), le_mean=NA, le_sd=NA, le_ci=NA, le_n=NA, le_var=NA, le_var_mo=NA) %>% 
     filter(SegLen>0)
   
   for(i in 1:nrow(LEseg)) {
@@ -518,14 +518,16 @@ LEshift=function(modelresults, jacobians, samplinginterval="monthly") {
     LEseg$le_mean[i]=mean(LEtemp, na.rm=T)
     LEseg$le_sd[i]=sd(LEtemp, na.rm=T)
     LEseg$le_ci[i]=LEseg$le_sd[i]/sqrt(LEseg$le_n[i])*qt(p=0.95, df=LEseg$le_n[i]-1)
+    LEseg$le_var[i]=var(LEtemp, na.rm=T)
     LEseg$le_var_mo[i]=var(LEtemp/timescale_mo(samplinginterval, 1), na.rm=T)
   }
   
   minmean=min(LEseg$le_mean) #not necessarily the mean with lowest CI
   minci=min(LEseg$le_mean-LEseg$le_ci)
-  varmax_mo=max(LEseg$le_var_mo)
+  varmin=min(LEseg$le_var)
+  varmin_mo=min(LEseg$le_var_mo)
 
-  return(list(LEseg=LEseg, minmean=minmean, minci=minci, varmax_mo=varmax_mo))
+  return(list(LEseg=LEseg, minmean=minmean, minci=minci, varmin=varmin, varmin_mo=varmin_mo))
 }
 
 #converts timesteps to months

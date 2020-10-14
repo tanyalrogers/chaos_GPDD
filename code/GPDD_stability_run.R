@@ -204,7 +204,8 @@ gpdd_d$LEregmin=gpdd_d$LEreg-1.96*gpdd_d$LEreg_se
 gpdd_d$LEsibly=map_dbl(gpdd_d$data_rescale, SiblymodelLE, y="PopRescale")
 
 #get variance on LE
-gpdd_d$varmax_mo=map_dbl(gpdd_results$LEshift, ~.x$varmax_mo)
+gpdd_d$varmin=map_dbl(gpdd_results$LEshift, ~.x$varmin)
+gpdd_d$varmin_mo=map_dbl(gpdd_results$LEshift, ~.x$varmin_mo)
 
 #get best model form
 gpdd_d$modelform=map_chr(gpdd_results$modelresultsbest, ~.x$form)
@@ -218,7 +219,7 @@ write.csv(exportEtau, "./data/gpdd_Etau_smap.csv", row.names = F)
 #export results
 exportres=select(gpdd_d, MainID, R2abund=bestR2, R2gr=bestR2m, predictable_ag, modelform, E, tau, theta, 
                  LEmean=minmean, LEmin=minci, LEmin_mo=minci_mo, LEmin_gen=minci_gen, LEclass=mincisign, 
-                 LEmean1d=minmean1d, LEmin1d=minci1d, LEclass1d=mincisign1d, LLE_proppos=lle_pp, LEreg, LEreg_se, LEregmin, LEsibly, LEvar_mo=varmax_mo)
+                 LEmean1d=minmean1d, LEmin1d=minci1d, LEclass1d=mincisign1d, LLE_proppos=lle_pp, LEreg, LEreg_se, LEregmin, LEsibly, LEvar=varmin, LEvar_mo=varmin_mo)
 write.csv(exportres, "./data/gpdd_results_smap.csv", row.names = F)
 exportres2=select(gpdd_combo, MainID, datasetlength, tslengthcat, R2abund=bestR2, R2gr=bestR2m, predictable_ag, E, tau, theta, 
                  LEmean=minmean, LEmin=minci, LEmin_mo=minci_mo, LEmin_gen=minci_gen, LEclass=mincisign)

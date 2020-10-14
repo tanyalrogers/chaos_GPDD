@@ -13,6 +13,7 @@ gpdd_d=read.csv("./data/gpdd_ts_metadata.csv", stringsAsFactors = F)
 gpdd_results=read.csv("./data/gpdd_results_smap.csv")
 gpdd_d=left_join(gpdd_d, gpdd_results, by="MainID")
 gpdd_combo=read.csv("./data/gpdd_results_truncation_smap.csv")
+#write.csv(gpdd_d, "./data/gpdd_results_smap_steve.csv", row.names = F)
 
 #general stats
 
@@ -337,12 +338,13 @@ ggplot(gpdd_d, aes(y=LEmin_gen, x=log10(timescale_MinAge), color=TaxonomicClass3
   geom_point(size=2, alpha=0.4) +
   geom_hline(yintercept = 0) +
   classic + labs(color="Taxonomic\nClass") + legalpha
+
 #variance in gle by gen time, within species
 ggplot(gpdd_d, aes(y=log10(LEvar_mo), x=log10(MinAge_mo), color=TaxonomicClass3)) + 
   ylab("log10 variance in LE (per month)") + xlab("log10 Generation Time (months)") + 
   geom_point(size=2, alpha=0.4) +
   classic + labs(color="Taxonomic\nClass") + legalpha
-ggplot(gpdd_d, aes(y=log10(LEvar_mo*timescale_mo(SamplingInterval, 1)^2), x=log10(MinAge_mo), color=LEclass)) + 
+ggplot(gpdd_d, aes(y=log10(LEvar), x=log10(MinAge_mo), color=LEclass)) + 
   ylab("log10 variance in LE (per timestep)") + xlab("log10 Generation Time (months)") + 
   geom_point(size=2, alpha=0.4) +
   classic + labs(color="Classification") + legalpha
