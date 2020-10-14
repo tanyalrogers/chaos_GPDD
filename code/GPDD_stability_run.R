@@ -53,7 +53,7 @@ gpdd_d$theta=map_dbl(gpdd_results$modelresultsbest, ~.x$modelstats$theta)
 #jacobians and stability of best model
 gpdd_results$jacobians=map(gpdd_results$modelresultsbest, getJacobians)
 gpdd_results$stability=map2(gpdd_results$modelresultsbest, gpdd_results$jacobians, getStability)
-gpdd_results$LEshift=map2(gpdd_results$modelresultsbest, gpdd_results$jacobians, LEshift)
+gpdd_results$LEshift=pmap(list(gpdd_results$modelresultsbest, gpdd_results$jacobians, gpdd_d$SamplingInterval), LEshift)
 #LEs of best model
 gpdd_d$gle=map_dbl(gpdd_results$stability, ~.x$gle)
 gpdd_d$minci=map_dbl(gpdd_results$LEshift, ~.x$minci)
@@ -203,6 +203,12 @@ gpdd_d$LEregmin=gpdd_d$LEreg-1.96*gpdd_d$LEreg_se
 #sibly method
 gpdd_d$LEsibly=map_dbl(gpdd_d$data_rescale, SiblymodelLE, y="PopRescale")
 
+#get variance on LE
+gpdd_d$varmax_mo=map_dbl(gpdd_results$LEshift, ~.x$varmax_mo)
+
+#get best model form
+gpdd_d$modelform=map_chr(gpdd_results$modelresultsbest, ~.x$form)
+
 #save(gpdd_d, gpdd_results, gpdd_combo, file = "./data/gpdd_results_update.Rdata")
 
 #export E and tau for other analyses
@@ -210,10 +216,9 @@ exportEtau=select(gpdd_d, MainID, E, tau)
 write.csv(exportEtau, "./data/gpdd_Etau_smap.csv", row.names = F)
 
 #export results
-gpdd_d$modelform=map_chr(gpdd_results$modelresultsbest, ~.x$form)
 exportres=select(gpdd_d, MainID, R2abund=bestR2, R2gr=bestR2m, predictable_ag, modelform, E, tau, theta, 
                  LEmean=minmean, LEmin=minci, LEmin_mo=minci_mo, LEmin_gen=minci_gen, LEclass=mincisign, 
-                 LEmean1d=minmean1d, LEmin1d=minci1d, LEclass1d=mincisign1d, LLE_proppos=lle_pp, LEreg, LEreg_se, LEregmin, LEsibly)
+                 LEmean1d=minmean1d, LEmin1d=minci1d, LEclass1d=mincisign1d, LLE_proppos=lle_pp, LEreg, LEreg_se, LEregmin, LEsibly, LEvar_mo=varmax_mo)
 write.csv(exportres, "./data/gpdd_results_smap.csv", row.names = F)
 exportres2=select(gpdd_combo, MainID, datasetlength, tslengthcat, R2abund=bestR2, R2gr=bestR2m, predictable_ag, E, tau, theta, 
                  LEmean=minmean, LEmin=minci, LEmin_mo=minci_mo, LEmin_gen=minci_gen, LEclass=mincisign)

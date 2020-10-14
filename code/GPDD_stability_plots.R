@@ -252,13 +252,20 @@ ggsave("./figures/AgeMat_Mass_GenSampled.png", width = 4, height = 3)
 #   classic + labs(color="Taxonomic\nClass") + legalpha
 
 #gle vs mass
-# ggplot(gpdd_d, aes(y=LEmin_mo, x=log10(Mass_g), color=TaxonomicClass3)) + 
-#   #facet_grid(predictable_ag~.) +
-#   #facet_grid(TaxonomicClass3~., scales="free_y") +
-#   ylab("LE lower bound (per month)") + xlab("log10 Mass (g)") +
-#   geom_point(size=2, alpha=0.5) +
-#   geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
-#   classic + labs(color="Taxonomic\nClass")
+ggplot(filter(gpdd_d, LEmin>0), aes(y=log10(LEmin_mo), x=log10(Mass_g), color=TaxonomicClass3)) +
+  #facet_grid(predictable_ag~.) +
+  #facet_grid(TaxonomicClass3~., scales="free_y") +
+  ylab("LE lower bound (per month)") + xlab("log10 Mass (g)") +
+  geom_point(size=2, alpha=0.9) +
+  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
+  classic + labs(color="Taxonomic\nClass")
+ggplot(filter(gpdd_d, LEmin>0), aes(y=log10(LEmin_mo), x=log10(MinAge_mo), color=TaxonomicClass3)) +
+  #facet_grid(predictable_ag~.) +
+  #facet_grid(TaxonomicClass3~., scales="free_y") +
+  ylab("LE lower bound (per month)") + xlab("log10 Mass (g)") +
+  geom_point(size=2, alpha=0.9) +
+  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
+  classic + labs(color="Taxonomic\nClass")
 
 #comparison to Anderson and Gilooly 2020 (positive values only)
 agle=read.csv("./data/AndersonGilloolyLEdata.csv", stringsAsFactors = F)
@@ -293,6 +300,9 @@ lemass1=ggplot(filter(gpdd_d, LEmin>0), aes(y=log10(LEmin_mo), x=log10(Mass_g)))
 
 #slopes
 summary(lm(log10(LEmin_mo)~log10(Mass_g), data=filter(gpdd_d, LEclass=="chaotic")))
+summary(lm(log10(LEmin_mo)~log10(MinAge_mo), data=filter(gpdd_d, LEclass=="chaotic")))
+summary(lm(log10(MinAge_mo)~log10(Mass_g), data=filter(gpdd_d, LEclass=="chaotic")))
+summary(lm(log10(MinAge_mo)~log10(timescale_MinAge), data=filter(gpdd_d, LEclass=="chaotic")))
 summary(lm(log10(LE_mo)~log10(Mass_g), data=agle))
 summary(lm(log10(LEmin_gen)~log10(Mass_g), data=filter(gpdd_d, LEclass=="chaotic")))
 
@@ -327,6 +337,15 @@ ggplot(gpdd_d, aes(y=LEmin_gen, x=log10(timescale_MinAge), color=TaxonomicClass3
   geom_point(size=2, alpha=0.4) +
   geom_hline(yintercept = 0) +
   classic + labs(color="Taxonomic\nClass") + legalpha
+#variance in gle by gen time, within species
+ggplot(gpdd_d, aes(y=log10(LEvar_mo), x=log10(MinAge_mo), color=TaxonomicClass3)) + 
+  ylab("log10 variance in LE (per month)") + xlab("log10 Generation Time (months)") + 
+  geom_point(size=2, alpha=0.4) +
+  classic + labs(color="Taxonomic\nClass") + legalpha
+ggplot(gpdd_d, aes(y=log10(LEvar_mo*timescale_mo(SamplingInterval, 1)^2), x=log10(MinAge_mo), color=LEclass)) + 
+  ylab("log10 variance in LE (per timestep)") + xlab("log10 Generation Time (months)") + 
+  geom_point(size=2, alpha=0.4) +
+  classic + labs(color="Classification") + legalpha
 
 #variance gle (gen) by gen time
 levar=gpdd_d %>% filter(!is.na(MinAge_mo)) %>% mutate(logGT=log10(MinAge_mo), GTbin=cut(logGT, breaks=c(seq(-2,1.5,0.5), max(logGT, na.rm=T)))) %>% 
