@@ -8,12 +8,16 @@ library(purrr)
 library(cowplot)
 
 source("./code/ggplot themes rogers.R")
-#load(file = "./data/gpdd_results_update.Rdata")
+#load(file = "./data/gpdd_results_update2.Rdata")
 gpdd_d=read.csv("./data/gpdd_ts_metadata.csv", stringsAsFactors = F)
 gpdd_results=read.csv("./data/gpdd_results_smap.csv")
 gpdd_d=left_join(gpdd_d, gpdd_results, by="MainID")
 gpdd_combo=read.csv("./data/gpdd_results_truncation_smap.csv")
 #write.csv(gpdd_d, "./data/gpdd_results_smap_steve.csv", row.names = F)
+
+#other methods
+gpdd_other=read.csv("./data/gpdd_othermethods.csv")
+gpdd_d=left_join(gpdd_d, gpdd_other, by="MainID")
 
 #general stats
 
@@ -274,8 +278,10 @@ tglevels=c("Birds","Bony fishes", "Insects", "Mammals", "Phytoplankton","Zooplan
 agle$Tax4=factor(agle$TaxonomicClass3, levels = tglevels)
 gpdd_d$Tax4=factor(gpdd_d$TaxonomicClass3, levels = tglevels)
 
+#agle=filter(agle, Origin=="lab")
+
 #positive le vs mass #####
-lemass1=ggplot(filter(gpdd_d, LEmin>0), aes(y=log10(LEmin_mo), x=log10(Mass_g))) + 
+lemass1=ggplot(filter(gpdd_d, LEmin_mo>0), aes(y=log10(LEmin_mo), x=log10(Mass_g))) + 
   ylab(expression(~log[10]~LE~(month^-1))) + xlab(expression(~log[10]~Mass~(g))) +
   geom_smooth(method="lm", se = F, color="black") +
   geom_smooth(data=agle, aes(y=log10(LE_mo)), method="lm", se = F, color="black", lty=2) +
@@ -283,7 +289,10 @@ lemass1=ggplot(filter(gpdd_d, LEmin>0), aes(y=log10(LEmin_mo), x=log10(Mass_g)))
   geom_point(data=agle, aes(y=log10(LE_mo), fill=Tax4, shape="AG2020"), stroke=0.5, size=2) +
   classic + labs(fill="Taxonomic\nGroup", shape="Source") + scale_fill_brewer(palette = "Dark2", drop=F) +
   scale_shape_manual(values = c(24,21)) + guides(fill = guide_legend(override.aes = list(size = 3.5, shape=21)),
-                                                 shape = guide_legend(override.aes = list(size = c(2,3.5))))
+                                                 shape = guide_legend(override.aes = list(size = c(2,3.5)))) +
+  theme(axis.title = element_text(size=12), axis.text = element_text(size=10))
+ggsave("./figures/mass_scaling.png", lemass1, width = 5.25, height = 4)
+
 # lemass2=ggplot(filter(gpdd_d, LEmin>0), aes(y=log10(LEmin_gen), x=log10(Mass_g))) + 
 #   ylab(expression(~log[10]~LE~(generation^-1))) + xlab(expression(~log[10]~Mass~(g))) +
 #   geom_smooth(method="lm", se = F, color="black") +
@@ -300,12 +309,12 @@ lemass1=ggplot(filter(gpdd_d, LEmin>0), aes(y=log10(LEmin_mo), x=log10(Mass_g)))
 # ggsave("./figures/LEmass.png", width = 8, height = 3.5)
 
 #slopes
-summary(lm(log10(LEmin_mo)~log10(Mass_g), data=filter(gpdd_d, LEclass=="chaotic")))
-summary(lm(log10(LEmin_mo)~log10(MinAge_mo), data=filter(gpdd_d, LEclass=="chaotic")))
-summary(lm(log10(MinAge_mo)~log10(Mass_g), data=filter(gpdd_d, LEclass=="chaotic")))
-summary(lm(log10(MinAge_mo)~log10(timescale_MinAge), data=filter(gpdd_d, LEclass=="chaotic")))
+summary(lm(log10(LEmin_mo)~log10(Mass_g), data=filter(gpdd_d, LEmin_mo>0)))
+summary(lm(log10(LEmin_mo)~log10(MinAge_mo), data=filter(gpdd_d, LEmin_mo>0)))
+summary(lm(log10(MinAge_mo)~log10(Mass_g), data=filter(gpdd_d, LEmin_mo>0)))
+summary(lm(log10(MinAge_mo)~log10(timescale_MinAge), data=filter(gpdd_d, LEmin_mo>0)))
 summary(lm(log10(LE_mo)~log10(Mass_g), data=agle))
-summary(lm(log10(LEmin_gen)~log10(Mass_g), data=filter(gpdd_d, LEclass=="chaotic")))
+summary(lm(log10(LEmin_gen)~log10(Mass_g), data=filter(gpdd_d, LEmin_mo>0)))
 
 #all LE vs mass (cropped)
 ggplot(gpdd_d, aes(y=LEmin_gen, x=log10(Mass_g), color=TaxonomicClass3)) + 
@@ -348,6 +357,10 @@ ggplot(gpdd_d, aes(y=log10(LEvar), x=log10(MinAge_mo), color=LEclass)) +
   ylab("log10 variance in LE (per timestep)") + xlab("log10 Generation Time (months)") + 
   geom_point(size=2, alpha=0.4) +
   classic + labs(color="Classification") + legalpha
+ggplot(gpdd_d, aes(y=slope, x=log10(MinAge_mo), color=LEclass)) + 
+  ylab("log10 variance in LE (per timestep)") + xlab("log10 Generation Time (months)") + 
+  geom_point(size=2, alpha=0.4) +
+  classic + labs(color="Classification") + legalpha
 
 #variance gle (gen) by gen time
 levar=gpdd_d %>% filter(!is.na(MinAge_mo)) %>% mutate(logGT=log10(MinAge_mo), GTbin=cut(logGT, breaks=c(seq(-2,1.5,0.5), max(logGT, na.rm=T)))) %>% 
@@ -365,19 +378,40 @@ levarplot=ggplot(levar, aes(x=GTmid, y=log10(levar))) +
   ylab(expression(~log[10]~var(LE)~(generation^-1))) + xlab(expression(~log[10]~Generations~Sampled)) +
   classic + scale_x_continuous(limits = c(0.5,4), breaks=c(seq(0,4,1)))
 
+#classification by gen time by E ####
+gpdd_d$LEclass01=ifelse(gpdd_d$LEclass=="chaotic",1,0)
+classgtE=ggplot(gpdd_d, aes(y=LEclass01, x=log10(MinAge_mo), color=E)) + 
+  ylab("Proportion Chaotic") + xlab(expression(~log[10]~Generation~Time~(months))) + 
+  geom_point(size=3, alpha=0.7) +
+  stat_smooth(method="glm", method.args=list(family="binomial"), color="black") +
+  classic + scale_color_viridis_c() 
+
+gpdd_d$RQA01=ifelse(gpdd_d$RQA=="chaotic",1,0)
+ggplot(gpdd_d, aes(y=RQA01, x=log10(MinAge_mo), color=E)) + 
+  ylab("Proportion Chaotic") + xlab(expression(~log[10]~Generation~Time~(months))) + 
+  geom_point(size=3, alpha=0.7) +
+  stat_smooth(method="glm", method.args=list(family="binomial")) +
+  classic + scale_color_viridis_c() 
+gpdd_d$PE01=ifelse(gpdd_d$PE3=="chaotic",1,0)
+ggplot(gpdd_d, aes(y=PE01, x=log10(MinAge_mo), color=E)) + 
+  ylab("Proportion Chaotic") + xlab(expression(~log[10]~Generation~Time~(months))) + 
+  geom_point(size=3, alpha=0.7) +
+  stat_smooth(method="glm", method.args=list(family="binomial")) +
+  classic + scale_color_viridis_c() 
+
 #gle by gen time by E ####
 LEmgtE=ggplot(gpdd_d, aes(y=LEmin_mo, x=log10(MinAge_mo), color=E)) + 
   ylab(expression(LE~(month^-1))) + xlab(expression(~log[10]~Generation~Time~(months))) + 
   geom_point(size=3, alpha=0.7) +
   geom_hline(yintercept = 0) +
-  classic + scale_color_viridis_c() + 
-  theme(legend.direction = "horizontal", legend.position = c(0,0),legend.justification = c(0,0), legend.background = element_rect(color="black"))
-LEggtE=ggplot(gpdd_d, aes(y=LEmin_gen, x=log10(MinAge_mo), color=E)) + 
-  ylab(expression(LE~(generation^-1))) + xlab(expression(~log[10]~Generation~Time~(months))) + 
-  geom_point(size=3, alpha=0.7) +
-  geom_hline(yintercept = 0) + 
-  classic + scale_color_viridis_c() +
-  theme(legend.direction = "horizontal", legend.position = c(0,0),legend.justification = c(0,0), legend.background = element_rect(color="black"))
+  classic + scale_color_viridis_c() 
+  #theme(legend.direction = "horizontal", legend.position = c(0,0),legend.justification = c(0,0), legend.background = element_rect(color="black"))
+# LEggtE=ggplot(gpdd_d, aes(y=LEmin_gen, x=log10(MinAge_mo), color=E)) + 
+#   ylab(expression(LE~(generation^-1))) + xlab(expression(~log[10]~Generation~Time~(months))) + 
+#   geom_point(size=3, alpha=0.7) +
+#   geom_hline(yintercept = 0) + 
+#   classic + scale_color_viridis_c() +
+#   theme(legend.direction = "horizontal", legend.position = c(0,0),legend.justification = c(0,0), legend.background = element_rect(color="black"))
 # LEg2gtE=ggplot(gpdd_d, aes(y=log10(abs(LEmin_gen)), x=log10(MinAge_mo), color=LEclass)) +
 #   ylab(expression(~log[10]~abs(LE)~(generation^-1))) + 
 #   xlab(expression(~log[10]~Generation~Time~(months))) +  
@@ -389,12 +423,16 @@ LEggtE=ggplot(gpdd_d, aes(y=LEmin_gen, x=log10(MinAge_mo), color=E)) +
 #   geom_point(aes(fill=TaxonomicClass3), size=3, pch=21, color="black", alpha=0.7) + 
 #   classic + labs(fill="Taxonomic\nClass") + scale_fill_brewer(palette = "Dark2")
 
-left=plot_grid(LEmgtE, LEggtE, nrow = 2, labels=c("A","C"))
-right=plot_grid(lemass1 + theme(legend.position="none"), levarplot, nrow = 2, labels=c("B","D"), axis = "btlr", align="hv")
-legend <- get_legend(lemass1 + theme(legend.box.margin = margin(0, 0, 0, 3), legend.justification = "top"))
-plot_grid(left,right,legend, ncol = 3, rel_widths = c(1,1,0.4))
-ggsave("./figures/gentime.png", width = 8, height = 6)
+left=plot_grid(classgtE + theme(legend.position="none"), LEmgtE + theme(legend.position="none"), nrow = 1, labels=c("A","B"))
+legend <- get_legend(LEmgtE + theme(legend.box.margin = margin(0, 0, 0, 3)))
+plot_grid(left,legend, ncol = 2, rel_widths = c(1,0.1))
+ggsave("./figures/gentime.png", width = 7, height = 3)
 
+# left=plot_grid(LEmgtE, LEggtE, nrow = 2, labels=c("A","C"))
+# right=plot_grid(lemass1 + theme(legend.position="none"), levarplot, nrow = 2, labels=c("B","D"), axis = "btlr", align="hv")
+# legend <- get_legend(lemass1 + theme(legend.box.margin = margin(0, 0, 0, 3), legend.justification = "top"))
+# plot_grid(left,right,legend, ncol = 3, rel_widths = c(1,1,0.4))
+# ggsave("./figures/gentime.png", width = 8, height = 6)
 
 # LEplots=plot_grid(LEmgtE + theme(legend.position="none"), LEg2gtE + theme(legend.position="none"), align = 'vh',labels=c("A","C"), ncol = 1)
 # legend <- get_legend(LEmgtE + theme(legend.box.margin = margin(0, 0, 0, 12)))
@@ -622,7 +660,7 @@ gpdd_combo_sub=filter(gpdd_combo, MainID %in% unique(gpdd_sub$MainID))
 
 #select only chaotic series
 gpdd_sub=filter(gpdd_d, LEclass=="chaotic" & datasetlength>30 & !is.na(timescale_MinAge)) %>% arrange(desc(timescale_MinAge))
-gpdd_combo_sub=filter(gpdd_combo, MainID %in% unique(gpdd_sub$MainID))
+gpdd_combo_sub=filter(gpdd_combo, MainID %in% unique(gpdd_sub$MainID)) 
 
 #shortened chaotic series ####
 ggplot(gpdd_sub, aes(y=factor(MainID, levels = unique(gpdd_sub$MainID)), x=timescale_MinAge, fill=LEclass, group=MainID)) + 

@@ -106,7 +106,7 @@ gpdd_d$minmean_gen=gpdd_d$minmean_mo*gpdd_d$MinAge_mo
 gpdd_results$LE1d=map2(gpdd_d$data_rescale, gpdd_d$bestmodel+2, LE1d, y="PopRescale")
 gpdd_results$jacobians1d=map(gpdd_results$LE1d, ~.x$jacobians)
 gpdd_results$modelresults1d=map(gpdd_results$LE1d, ~.x$modelresults)
-gpdd_results$LEshift1d=map2(gpdd_results$modelresults1d, gpdd_results$jacobians1d, LEshift)
+gpdd_results$LEshift1d=pmap(list(gpdd_results$modelresults1d, gpdd_results$jacobians1d, gpdd_d$SamplingInterval), LEshift)
 
 gpdd_d$gle1d=map_dbl(gpdd_results$LE1d, ~.x$stability$gle)
 gpdd_d$minci1d=map_dbl(gpdd_results$LEshift1d, ~.x$minci)
@@ -166,7 +166,7 @@ gpdd_short$theta=map_dbl(gpdd_short_results$modelresultsbest, ~.x$modelstats$the
 #jacobians and stability of best model
 gpdd_short_results$jacobians=map(gpdd_short_results$modelresultsbest, getJacobians)
 gpdd_short_results$stability=map2(gpdd_short_results$modelresultsbest, gpdd_short_results$jacobians, getStability)
-gpdd_short_results$LEshift=map2(gpdd_short_results$modelresultsbest, gpdd_short_results$jacobians, LEshift)
+gpdd_short_results$LEshift=pmap(list(gpdd_short_results$modelresultsbest, gpdd_short_results$jacobians, gpdd_short$SamplingInterval), LEshift)
 
 #LEs of best model
 gpdd_short$gle=map_dbl(gpdd_short_results$stability, ~.x$gle)
@@ -207,10 +207,15 @@ gpdd_d$LEsibly=map_dbl(gpdd_d$data_rescale, SiblymodelLE, y="PopRescale")
 gpdd_d$varmin=map_dbl(gpdd_results$LEshift, ~.x$varmin)
 gpdd_d$varmin_mo=map_dbl(gpdd_results$LEshift, ~.x$varmin_mo)
 
+#get variance intercept
+gpdd_results$LEsaturation=pmap(list(gpdd_results$modelresultsbest, gpdd_results$jacobians, gpdd_d$SamplingInterval), LEsaturation)
+gpdd_d$logerror=map_dbl(gpdd_results$LEsaturation, ~.x$logerror)
+gpdd_d$slope=map_dbl(gpdd_results$LEsaturation, ~.x$slope)
+
 #get best model form
 gpdd_d$modelform=map_chr(gpdd_results$modelresultsbest, ~.x$form)
 
-#save(gpdd_d, gpdd_results, gpdd_combo, file = "./data/gpdd_results_update.Rdata")
+save(gpdd_d, gpdd_results, gpdd_combo, gpdd_short, gpdd_short_results, file = "./data/gpdd_results_update2.Rdata")
 
 #export E and tau for other analyses
 exportEtau=select(gpdd_d, MainID, E, tau)
@@ -219,9 +224,10 @@ write.csv(exportEtau, "./data/gpdd_Etau_smap.csv", row.names = F)
 #export results
 exportres=select(gpdd_d, MainID, R2abund=bestR2, R2gr=bestR2m, predictable_ag, modelform, E, tau, theta, 
                  LEmean=minmean, LEmin=minci, LEmin_mo=minci_mo, LEmin_gen=minci_gen, LEclass=mincisign, 
-                 LEmean1d=minmean1d, LEmin1d=minci1d, LEclass1d=mincisign1d, LLE_proppos=lle_pp, LEreg, LEreg_se, LEregmin, LEsibly, LEvar=varmin, LEvar_mo=varmin_mo)
+                 LEmean1d=minmean1d, LEmin1d=minci1d, LEclass1d=mincisign1d, LLE_proppos=lle_pp, LEreg, LEreg_se, LEregmin, 
+                 LEsibly, LEvar=varmin, LEvar_mo=varmin_mo, logerror, slope)
 write.csv(exportres, "./data/gpdd_results_smap.csv", row.names = F)
-exportres2=select(gpdd_combo, MainID, datasetlength, tslengthcat, R2abund=bestR2, R2gr=bestR2m, predictable_ag, E, tau, theta, 
+exportres2=select(gpdd_combo, MainID, datasetlength, tslengthcat, timescale_MinAge, MinAge_mo, Mass_g, R2abund=bestR2, R2gr=bestR2m, predictable_ag, E, tau, theta, 
                  LEmean=minmean, LEmin=minci, LEmin_mo=minci_mo, LEmin_gen=minci_gen, LEclass=mincisign)
 write.csv(exportres2, "./data/gpdd_results_truncation_smap.csv", row.names = F)
 

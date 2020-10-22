@@ -471,7 +471,17 @@ LEshift=function(modelresults, jacobians, samplinginterval="monthly") {
   len=dim(jacobians)[3]
   ndim=dim(jacobians)[1]
   
-  runlen=rle(!is.na(jacobians[1,1,]))
+  #remove leading NAs
+  if(ndim==1) {
+    jacobians2=jacobians[(ndim*tau+1):len]
+    runlen=rle(!is.na(jacobians2))
+    len2=length(jacobians2)
+  } else {
+    jacobians2=jacobians[,,(ndim*tau+1):len]
+    runlen=rle(!is.na(jacobians2[1,1,]))
+    len2=dim(jacobians2)[3]
+  }
+  
   serlen=max(runlen$lengths[runlen$values==TRUE])
   
   Tminus=3:6
@@ -480,39 +490,42 @@ LEshift=function(modelresults, jacobians, samplinginterval="monthly") {
   
   for(i in 1:nrow(LEseg)) {
     SegLen=LEseg$SegLen[i]
-    LEtemp=numeric(len-SegLen+1)
+    LEtemp=numeric(len2-SegLen+1)
     for(j in 1:length(LEtemp)) {
-      Jacs1=jacobians[,,j:(j+SegLen-1)]
+      if(ndim==1) {
+        Jacs1=jacobians2[j:(j+SegLen-1)]
+      } else {
+        Jacs1=jacobians2[,,j:(j+SegLen-1)]
+      }
       LEtemp2=numeric(tau)
-      for(a in 1:tau) {
-        indices=seq(from=1+a-1, to=ifelse(ndim==1,length(Jacs1),dim(Jacs1)[3]), by=tau)
-        if(ndim==1) {
-          Jacs=Jacs1[indices]
-        } else {
-          Jacs=Jacs1[,,indices]
-        }
-        if(any(is.na(Jacs))) {
-          LEtemp2[a]=NA
-        } else if(ndim==1) {
-          LEtemp2[a]=mean(log(abs(Jacs)), na.rm=T)/tau
-        } else {
-          nk=dim(Jacs)[3]
-          Jk=Jacs[,,1]
-          QR=qr(Jk)
-          R=qr.R(QR)
-          Q=qr.Q(QR)
-          Rcum=R
-          for(k in 2:nk) {
-            Jk=Jacs[,,k]
-            QR=qr(Jk%*%Q)
+      if(any(is.na(Jacs1))) {
+        LEtemp2=NA
+      } else {
+        for(a in 1:tau) {
+          indices=seq(from=a, to=ifelse(ndim==1,length(Jacs1),dim(Jacs1)[3]), by=tau)
+          if(ndim==1) {
+            Jacs=Jacs1[indices]
+            LEtemp2[a]=mean(log(abs(Jacs)), na.rm=T)/tau
+          } else {
+            Jacs=Jacs1[,,indices]
+            nk=dim(Jacs)[3]
+            Jk=Jacs[,,1]
+            QR=qr(Jk)
             R=qr.R(QR)
             Q=qr.Q(QR)
-            Rcum=R%*%Rcum
-          }
+            Rcum=R
+            for(k in 2:nk) {
+              Jk=Jacs[,,k]
+              QR=qr(Jk%*%Q)
+              R=qr.R(QR)
+              Q=qr.Q(QR)
+              Rcum=R%*%Rcum
+            }
           LEtemp2[a]=1/nk*log(max(abs(diag(Rcum))))/tau
+          }
         }
       }
-      LEtemp[j]=mean(LEtemp2, na.rm=T)
+      LEtemp[j]=mean(LEtemp2, na.rm=F) #if tau>1, will result in more than i+1 segments being averaged unless you set na.rm=F
     }
     LEseg$le_n[i]=length(which(!is.na(LEtemp)))
     LEseg$le_mean[i]=mean(LEtemp, na.rm=T)
@@ -528,6 +541,83 @@ LEshift=function(modelresults, jacobians, samplinginterval="monthly") {
   varmin_mo=min(LEseg$le_var_mo)
 
   return(list(LEseg=LEseg, minmean=minmean, minci=minci, varmin=varmin, varmin_mo=varmin_mo))
+}
+
+
+LEsaturation=function(modelresults, jacobians, samplinginterval="monthly") {
+  tau=modelresults$modelstats$tau
+  
+  len=dim(jacobians)[3]
+  ndim=dim(jacobians)[1]
+  
+  #remove leading NAs
+  if(ndim==1) {
+    jacobians2=jacobians[(ndim*tau+1):len]
+    runlen=rle(!is.na(jacobians2))
+    len2=length(jacobians2)
+  } else {
+    jacobians2=jacobians[,,(ndim*tau+1):len]
+    runlen=rle(!is.na(jacobians2[1,1,]))
+    len2=dim(jacobians2)[3]
+  }
+  
+  serlen=max(runlen$lengths[runlen$values==TRUE])
+
+  #Tminus=3:6
+  Tminus=3:(serlen-2*tau)
+  LEseg=data.frame(SegLen=(serlen-max(Tminus)):(serlen-min(Tminus)), le_mean=NA, le_sd=NA, le_ci=NA, le_n=NA, le_var=NA) %>% 
+    filter(SegLen>0)
+  
+  for(i in 1:nrow(LEseg)) {
+    SegLen=LEseg$SegLen[i]
+    LEtemp=numeric(len2-SegLen+1)
+    for(j in 1:length(LEtemp)) {
+      if(ndim==1) {
+        Jacs1=jacobians2[j:(j+SegLen-1)]
+      } else {
+        Jacs1=jacobians2[,,j:(j+SegLen-1)]
+      }
+      if(any(is.na(Jacs1))) {
+        LEtemp2=NA
+      } else {
+        LEtemp2=numeric(tau)
+        for(a in 1:tau) {
+          indices=seq(from=a, to=ifelse(ndim==1,length(Jacs1),dim(Jacs1)[3]), by=tau)
+          if(ndim==1) {
+            Jacs=Jacs1[indices]
+            LEtemp2[a]=mean(log(abs(Jacs)), na.rm=T)/tau
+          } else {
+            Jacs=Jacs1[,,indices]
+            nk=dim(Jacs)[3]
+            Jk=Jacs[,,1]
+            QR=qr(Jk)
+            R=qr.R(QR)
+            Q=qr.Q(QR)
+            Rcum=R
+            for(k in 2:nk) {
+              Jk=Jacs[,,k]
+              QR=qr(Jk%*%Q)
+              R=qr.R(QR)
+              Q=qr.Q(QR)
+              Rcum=R%*%Rcum
+            }
+          LEtemp2[a]=1/nk*log(max(abs(diag(Rcum))))/tau
+          }
+        }
+      }
+      LEtemp[j]=mean(LEtemp2, na.rm=F)/timescale_mo(samplinginterval, 1) #if tau>1, will result in more than i+1 segments being averaged unless you set na.rm=F
+    }
+    LEseg$le_n[i]=length(which(!is.na(LEtemp)))
+    LEseg$le_mean[i]=mean(LEtemp, na.rm=T)
+    LEseg$le_sd[i]=sd(LEtemp, na.rm=T)
+    LEseg$le_ci[i]=LEseg$le_sd[i]/sqrt(LEseg$le_n[i])*qt(p=0.95, df=LEseg$le_n[i]-1)
+    LEseg$le_var[i]=var(LEtemp, na.rm=T)
+  }
+  
+  m1=lm(log(le_var)~log(SegLen), data=LEseg)
+  logerror=coefficients(m1)[1]
+  slope=coefficients(m1)[2]
+  return(list(LEseg=LEseg, logerror=logerror, slope=slope))
 }
 
 #converts timesteps to months
@@ -551,3 +641,65 @@ SiblymodelLE=function(data, y) {
   c2=coefficients(mod)[3]
   LE=mean(log(abs(c1+2*c2*ser_log)), na.rm=T)
 }
+
+RickermodelLE=function(data, y, plot=F) {
+  ser=data[,y]
+  ser1=lag(ser)
+  serlog=log(ser)
+  serlog1=lag(serlog)
+  gr=serlog-serlog1
+
+  mi=-min(log(ser/ser1), na.rm=T)
+  r0=ser/ser1-exp(-mi)
+  r0[r0<=0]=NA
+  r1=log(r0)
+  mod1=lm(r1~ser1)
+  if(coef(mod1)[1]<=0) {
+    mod1=lm(r1~0+ser1)
+    ai=0.001
+    bi=min(-0.001,coef(mod1)[1])
+  } else {
+    ai=coef(mod1)[1]
+    bi=min(-0.001,coef(mod1)[2])
+  }
+  if(plot) {
+    par(mfrow=c(2,2), mar=c(4,4,1,1))
+    plot(log(ser), type="l")
+    plot(ser~ser1)
+    abline(a=0,b=1)
+    print(c(mi, ai, bi))
+    plot(gr~ser1)
+    plot(r1~ser1)
+  }
+  #mod2=nls(ser~ser1*exp(-m)+ser1*exp(a+b*ser1), start=list(m=mi, a=ai, b=bi))
+  mod2=nls(gr~log(exp(-m)+exp(a+b*ser1)), start=list(m=mi, a=ai, b=bi), algorithm = "port", lower=c(0,0,-1000), upper=c(1000,1000,0))
+  coeffs=coef(mod2)
+  if(plot) {
+    print(coeffs)
+    x1=seq(min(ser, na.rm=T), max(ser, na.rm=T), 0.1)
+    y1=predict(mod2, newdata=data.frame(ser1=x1))
+    y2=x1*exp(-coeffs[1])+x1*exp(coeffs[2]+coeffs[3]*x1)
+    par(mfrow=c(2,2), mar=c(4,4,1,1))
+    plot(log(ser), type="l")
+    plot(ser~ser1)
+    abline(a=0,b=1)
+    lines(y2~x1, col="red")
+    plot(gr~ser1)
+    lines(y1~x1, col="red")
+    print(summary(mod2))
+    dNdN1=exp(-coeffs[1])+exp(coeffs[2]+coeffs[3]*x1)*(1+coeffs[3]*x1)
+    plot(dNdN1~x1, type="l", col="red")
+  }
+  dobs=exp(-coeffs[1])+exp(coeffs[2]+coeffs[3]*ser1)*(1+coeffs[3]*ser1)
+  le=mean(log(abs(dobs)), na.rm=T)
+  # print(le)
+  return(le)
+}
+RickermodelLEerr=safely(RickermodelLE, otherwise = NA)
+
+# RickermodelLE(gpdd_d$data_rescale[[140]], "PopRescale", T)
+# gpdd_results$Rickertest=map(gpdd_d$data_rescale, safeRicker, y="PopRescale")
+# gpdd_d$Rickertest=map_dbl(gpdd_results$Rickertest, ~.x$result)
+# length(which(is.na(gpdd_d$Rickertest)))
+# length(which(gpdd_d$Rickertest>0.01))/length(which(!is.na(gpdd_d$Rickertest)))
+# map(gpdd_results$Rickertest, ~.x$error)
