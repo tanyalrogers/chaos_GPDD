@@ -217,7 +217,7 @@ sims_d$LEreg=map_dbl(sims_results$regLE, ~.x$LEreg)
 sims_d$LEreg_se=map_dbl(sims_results$regLE, ~.x$LEreg_se)
 
 #save results
-#save(sims_d, sims_results, file = "./data/sims_results_update.Rdata")
+#save(sims_d, sims_results, file = "./data/sims_results_update2.Rdata")
 #save(sims_log, sims_log_results, sims2_log, sims2_log_results, file = "./data/sims_results_log_update.Rdata")
 
 #export E and tau for other analyses
@@ -297,7 +297,7 @@ sims_v$LEreg=map_dbl(sims_vresults$regLE, ~.x$LEreg)
 sims_v$LEreg_se=map_dbl(sims_vresults$regLE, ~.x$LEreg_se)
 
 #save results
-#save(sims_v, sims_vresults, file = "./data/sims_validation.Rdata")
+#save(sims_v, sims_vresults, file = "./data/sims_validation2.Rdata")
 #save(sims_vlog, sims_vlog_results, file = "./data/sims_validation_log.Rdata")
 
 #export E and tau for other analyses
