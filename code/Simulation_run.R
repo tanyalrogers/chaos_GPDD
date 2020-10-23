@@ -356,20 +356,20 @@ sims_vresults2$regLE=map2(sims_v2$data, sims_vresults2$modelresultsbest, regLE, 
 sims_v2$LEreg=map_dbl(sims_vresults2$regLE, ~.x$LEreg)
 sims_v2$LEreg_se=map_dbl(sims_vresults2$regLE, ~.x$LEreg_se)
 
-save(sims_v2, sims_vresults2, file = "./data/sims_validation2.Rdata")
+save(sims_v2, sims_vresults2, file = "./data/sims_validation_forcedAR.Rdata")
 
 #export E and tau for other analyses
 Eexport=spread(select(sims_v2, ID:SimNumber, Ebest), SimNumber, Ebest) %>% 
   select(ID:TSlength, paste0("Sim.",1:100))
 tauexport=spread(select(sims_v2, ID:SimNumber, taubest), SimNumber, taubest) %>% 
   select(ID:TSlength, paste0("Sim.",1:100))
-write.csv(Eexport,"./data/sims_validation2_E.csv", row.names = F)
-write.csv(tauexport,"./data/sims_validation2_tau.csv", row.names = F)
+write.csv(Eexport,"./data/sims_validation_E_forcedAR.csv", row.names = F)
+write.csv(tauexport,"./data/sims_validation_tau_forcedAR.csv", row.names = F)
 
 #export results
 sims_v2$modelform=map_chr(sims_vresults2$modelresultsbest, ~.x$form)
 vexport=select(sims_v2, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, LEmean=minmean, LEmin=minci, LEreg, LEreg_se)
-write.csv(vexport,"./data/sims_validation2_results.csv", row.names = F)
+write.csv(vexport,"./data/sims_validation_results_forcedAR.csv", row.names = F)
 
 
 #merge with results from other methods ####
@@ -417,7 +417,29 @@ DTclassv=read.csv("./data/DTclassification_validation.csv") %>% gather(SimNumber
 sims_v=left_join(sims_v, RQAclassv) %>% left_join(PEclassv) %>%
   left_join(HVAclassv) %>% left_join(DTclassv)
 
+#more validation data
+sims_v2=read.csv("./data/sims_validation_results_forcedAR.csv", stringsAsFactors = F)
+modelorderv=unique(arrange(sims_v2, Classification, Model)$Model)
+sims_v2$Model=factor(sims_v2$Model, levels=modelorderv)
+#reclass noise level for stochastic ts
+sims_v2$NoiseLevel2=ifelse(sims_v2$NoiseLevel==0, 0.01, sims_v2$NoiseLevel)
+sims_v2$Classification2=ifelse(sims_v2$Classification=="chaotic", "chaotic", "not chaotic")
+#class LEs regression method
+sims_v2$LEregmin=sims_v2$LEreg-1.96*sims_v2$LEreg_se
+sims_v2$LEregclass=ifelse(sims_v2$LEregmin>0.01, "chaotic", "not chaotic")
+#class LEs jacobian method
+sims_v2$LEclass=ifelse(sims_v2$LEmin>0.01, "chaotic", "not chaotic")
+#class other methods
+RQAclassv=read.csv("./data/RQAclassification_forcedAR.csv", stringsAsFactors = F) %>% gather(SimNumber, RQAclass, Sim.1:Sim.100)
+PEclassv=read.csv("./data/PEclassification_forcedAR.csv", stringsAsFactors = F) %>% gather(SimNumber, PEclass, Sim.1:Sim.100)
+HVAclassv=read.csv("./data/HVAclassification_forcedAR.csv", stringsAsFactors = F) %>% gather(SimNumber, HVAclass, Sim.1:Sim.100)
+DTclassv=read.csv("./data/DTclassification_forcedAR.csv", stringsAsFactors = F) %>% gather(SimNumber, DTclass, Sim.1:Sim.100)
+#join to main table
+sims_v2=left_join(sims_v2, RQAclassv) %>% left_join(PEclassv) %>%
+  left_join(HVAclassv) %>% left_join(DTclassv)
+
 #write data
 write.csv(sims_d, "./data/sims_test_results_allmethods.csv", row.names = F)
 write.csv(sims_v, "./data/sims_validation_results_allmethods.csv", row.names = F)
+write.csv(sims_v2, "./data/sims_validation_results_forcedAR_allmethods.csv", row.names = F)
 

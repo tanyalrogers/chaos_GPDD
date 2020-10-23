@@ -11,6 +11,8 @@ source("./code/ggplot themes rogers.R")
 #load data ####
 sims_d=read.csv("./data/sims_test_results_allmethods.csv")
 sims_v=read.csv("./data/sims_validation_results_allmethods.csv")
+sims_v2=read.csv("./data/sims_validation_results_forcedAR_allmethods.csv")
+sims_v=rbind(sims_v, sims_v2)
 
 #set model order
 modelorder=unique(arrange(sims_d, Classification, Model)$Model)
@@ -177,7 +179,7 @@ ggplot(filter(summary2, Method2 %in% c("Jacobian LE", "RQA", "PE")), aes(x=facto
   classic + scale_x_discrete(expand = c(0,0)) + scale_y_discrete(expand = c(0,0)) +
   labs(y="Model", x="Noise Level", fill="Proportion Classified Chaotic", title = "Time Series Length") +
   removefacetbackground + theme(plot.title = element_text(hjust = 0.5, size=11), strip.text = element_text(size=10), legend.position = "bottom",
-                                axis.text.y = element_text(size=8, color=rep(c("black","royalblue","seagreen"), each=3)),
+                                axis.text.y = element_text(size=8, color=c(rep(c("black","royalblue","seagreen"), each=3),"seagreen")),
                                 panel.spacing.x = unit(0.2,"lines")) 
 ggsave("./figures/SimResultsIndivModels_validation.png", width = 7, height = 6)
 
