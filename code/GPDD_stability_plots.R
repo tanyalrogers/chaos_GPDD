@@ -382,7 +382,7 @@ levarplot=ggplot(levar, aes(x=GTmid, y=log10(levar))) +
 gpdd_d$LEclass01=ifelse(gpdd_d$LEclass=="chaotic",1,0)
 classgtE=ggplot(gpdd_d, aes(y=LEclass01, x=log10(MinAge_mo), color=E)) + 
   ylab("Proportion Chaotic") + xlab(expression(~log[10]~Generation~Time~(months))) + 
-  geom_point(size=3, alpha=0.7) +
+  geom_jitter(size=3, alpha=0.7, width=0, height=0.03) +
   stat_smooth(method="glm", method.args=list(family="binomial"), color="black") +
   classic + scale_color_viridis_c() 
 
@@ -482,24 +482,35 @@ ggsave("./figures/gentime.png", width = 7, height = 3)
 #   classic + labs(color="Taxonomic\nClass") + legalpha
 
 #gle by R2 ####
+r2class=ggplot(gpdd_d, aes(y=LEclass01, x=R2abund)) + 
+  ylab("Proportion chaotic") + xlab(expression(R^2~'for'~abundance)) +
+  geom_jitter(aes(fill=TaxonomicClass3), width=0, height=0.03, size=2.5, pch=21, alpha=0.9, color="black") +
+  stat_smooth(method="glm", method.args=list(family="binomial"), color="black") +
+  classic + labs(fill="Taxonomic\nGroup") +scale_fill_brewer(palette = "Dark2")
 r2ab=ggplot(gpdd_d, aes(y=LEmin_mo, x=R2abund, fill=TaxonomicClass3)) + 
   #facet_grid(TaxonomicClass3~.) + 
   ylab(expression(LE~(month^-1))) + xlab(expression(R^2~'for'~abundance)) +
-  geom_hline(yintercept = 0) + geom_vline(xintercept = 0.2, lty=2) + 
+  geom_hline(yintercept = 0) + #geom_vline(xintercept = 0.2, lty=2) + 
   geom_point(size=2.5, pch=21, alpha=0.9, color="black") +
-  classic + labs(fill="Taxonomic\nClass") + scale_fill_brewer(palette = "Dark2")
+  classic + labs(fill="Taxonomic\nGroup") + scale_fill_brewer(palette = "Dark2")
 r2gr=ggplot(gpdd_d, aes(y=LEmin_mo, x=R2gr, fill=TaxonomicClass3)) + 
   #facet_grid(TaxonomicClass3~.) + 
   ylab(expression(LE~(month^-1))) + xlab(expression(R^2~'for'~growth~rate)) +
   geom_hline(yintercept = 0) + geom_vline(xintercept = 0.2, lty=2) + 
   geom_point(size=2.5, pch=21, alpha=0.9, color="black") +
-  classic + labs(fill="Taxonomic\nClass") + scale_fill_brewer(palette = "Dark2")
+  classic + labs(fill="Taxonomic\nGroup") + scale_fill_brewer(palette = "Dark2")
 r22=ggplot(gpdd_d, aes(y=R2abund, x=R2gr, fill=LEclass)) + 
   #facet_grid(TaxonomicClass3~.) + 
   ylab(expression(R^2~'for'~abundance)) + xlab(expression(R^2~'for'~growth~rate)) +
   geom_point(size=2.5, pch=21, alpha=0.9, color="black") +
   geom_hline(yintercept = 0.2, lty=2) + geom_vline(xintercept = 0.2, lty=2) + 
   classic + labs(fill="Classification") + scale_fill_brewer(palette = "Paired", direction = -1)
+r2plots=plot_grid(r2class + theme(legend.position="none"), r2ab + theme(legend.position="none"), nrow = 1, labels=c("A","B"))
+legend <- get_legend(r2class + theme(legend.box.margin = margin(0, 0, 0, 3)))
+plot_grid(r2plots,legend, ncol = 2, rel_widths = c(1,0.25))
+ggsave("./figures/R2LE2.png", width = 7, height = 3)
+
+
 r2plots=plot_grid(r2ab + theme(legend.position="none"), r2gr + theme(legend.position="none"), align = 'vh',labels="AUTO")
 legend <- get_legend(r2ab + theme(legend.box.margin = margin(0, 0, 0, 12)))
 r2plots2=plot_grid(r22, legend, ncol=2, rel_widths = c(2.5,1), labels=c("C",""))
@@ -665,7 +676,7 @@ gpdd_combo_sub=filter(gpdd_combo, MainID %in% unique(gpdd_sub$MainID))
 #shortened chaotic series ####
 ggplot(gpdd_sub, aes(y=factor(MainID, levels = unique(gpdd_sub$MainID)), x=timescale_MinAge, fill=LEclass, group=MainID)) + 
   #facet_grid(TaxonomicClass3~.) + 
-  ylab("MainID") + xlab("Time series length (generations)") + 
+  ylab("MainID") + xlab("Generations Sampled") + 
   geom_path(data=gpdd_combo_sub, size=2, aes(color=MinAge_mo)) +
   geom_point(data=gpdd_combo_sub, pch=21, size=2) + 
   geom_point(size=2, pch=21, aes(fill=LEclass)) + scale_x_log10(breaks=c(1,10,100,1000,10000)) +
@@ -682,6 +693,32 @@ ggplot(gpdd_sub, aes(y=factor(MainID, levels = unique(gpdd_sub$MainID)), x=times
   classic + scale_color_viridis_c(trans="log10")+ scale_fill_viridis_d() +
   labs(fill="E", color="Generation\ntime (months)") + theme(axis.text.y = element_text(size=6)) 
 
+#change in classification full to 30 ####
+gpdd_combo_sub2=filter(gpdd_combo_sub, datasetlength==30) %>% left_join(select(gpdd_d, MainID, TaxonomicClass3, datasetlength), by="MainID")
+gpdd_combo_sub2$LEcchange01=ifelse(gpdd_combo_sub2$LEclass=="chaotic",1,0)
+gpdd_combo_sub2$changetsl=(gpdd_combo_sub2$datasetlength.y-gpdd_combo_sub2$datasetlength.x)/gpdd_combo_sub2$datasetlength.y
+ggplot(gpdd_combo_sub2, aes(y=LEcchange01, x=log10(MinAge_mo), color=E)) + 
+  ylab("Proportion remaining chaotic") + xlab(expression(~log[10]~Generation~Time~(months))) + 
+  geom_jitter(size=3, alpha=0.7, width=0, height=0.03) +
+  stat_smooth(method="glm", method.args=list(family="binomial"), color="black") +
+  classic + scale_color_viridis_c() 
+ggsave("./figures/shortchaotic_change.png", width = 4, height = 3)
+mg=glm(LEcchange01~log10(MinAge_mo), data=gpdd_combo_sub2, family="binomial")
+car::Anova(mg)
+summary(mg)
+
+gpdd_combo_sub2 %>% group_by(TaxonomicClass3) %>% summarize(n=n(), prop=1-sum(LEcchange01)/length(LEcchange01))
+
+ggplot(gpdd_combo_sub2, aes(y=LEcchange01, x=changetsl, color=E)) + 
+  ylab("Proportion remaining chaotic") + xlab("Change in ts length") + 
+  geom_jitter(size=3, alpha=0.7, width=0, height=0.03) +
+  stat_smooth(method="glm", method.args=list(family="binomial"), color="black") +
+  classic + scale_color_viridis_c() 
+mg=glm(LEcchange01~changetsl, data=gpdd_combo_sub2, family="binomial")
+car::Anova(mg)
+summary(mg)
+
+
 #histogram of Es
 ggplot(gpdd_sub, aes(x=factor(E), fill=TaxonomicClass3)) + 
   #facet_grid(TaxonomicClass3~.) + 
@@ -694,7 +731,7 @@ ggplot(filter(gpdd_combo_sub, datasetlength==30), aes(x=factor(E), fill=Taxonomi
   classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
   labs(y="Count", fill="Taxonomic\nClass") + scale_fill_brewer(palette = "Dark2")
 
-#change in E and LE with short ts ####
+#change in E and LE with short ts 
 shortsum=select(gpdd_sub, MainID, TaxonomicClass3, datasetlength, timescale_MinAge, MinAge_mo, Mass_g, E, LEmin_mo)
 shortsum2=select(gpdd_combo_sub, MainID, datasetlength2=datasetlength, timescale_MinAge2=timescale_MinAge, E2=E, LEmin_mo2=LEmin_mo) %>% 
   filter(datasetlength2==30)
@@ -727,6 +764,10 @@ ggplot(shortsum, aes(y=dLEmin_mo, x=dE, color=TaxonomicClass3)) +
   geom_hline(yintercept = 0, lty=2) +
   geom_vline(xintercept = 0, lty=2) +
   labs(x="Change in E", y="Change in LE") +
+  geom_point(size=3, alpha=0.5) + classic 
+ggplot(shortsum, aes(y=dLEmin_mo, x=log10(MinAge_mo), color=TaxonomicClass3)) +
+  geom_hline(yintercept = 0, lty=2) +
+  labs(x="Generation Time", y="Change in LE") +
   geom_point(size=3, alpha=0.5) + classic 
 
 

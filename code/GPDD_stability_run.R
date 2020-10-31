@@ -215,6 +215,27 @@ gpdd_d$slope=map_dbl(gpdd_results$LEsaturation, ~.x$slope)
 #get best model form
 gpdd_d$modelform=map_chr(gpdd_results$modelresultsbest, ~.x$form)
 
+#repeat with sqrt transform
+gpdd_results$modelresultssqrt=map(gpdd_d$data_sqrt, smap_model_options, y="PopSqrt", model=3)
+gpdd_results$jacobianssqrt=map(gpdd_results$modelresultssqrt, getJacobians)
+gpdd_results$LEshiftsqrt=pmap(list(gpdd_results$modelresultssqrt, gpdd_results$jacobianssqrt, gpdd_d$SamplingInterval), LEshift)
+#LEs of best model
+gpdd_d$LEmin_sqrt=map_dbl(gpdd_results$LEshiftsqrt, ~.x$minci)
+#LE signs
+gpdd_d$LEclass_sqrt=ifelse(gpdd_d$LEmin_sqrt>0.01, "chaotic", "not chaotic")
+gpdd_d$R2sqrt=map_dbl(gpdd_results$modelresultssqrt, ~.x$modelstats$R2model)
+#
+gpdd_results$jacobians3=map(gpdd_results$modelresults3, getJacobians)
+gpdd_results$LEshift3=pmap(list(gpdd_results$modelresults3, gpdd_results$jacobians3, gpdd_d$SamplingInterval), LEshift)
+gpdd_d$LEmin_3=map_dbl(gpdd_results$LEshift3, ~.x$minci)
+#
+gpdd_results$modelresultsut=map(gpdd_d$data_sqrt, smap_model_options, y="Pop", model=3)
+gpdd_results$jacobiansut=map(gpdd_results$modelresultsut, getJacobians)
+gpdd_results$LEshiftut=pmap(list(gpdd_results$modelresultsut, gpdd_results$jacobiansut, gpdd_d$SamplingInterval), LEshift)
+gpdd_d$LEmin_ut=map_dbl(gpdd_results$LEshiftut, ~.x$minci)
+
+
+#save
 save(gpdd_d, gpdd_results, gpdd_combo, gpdd_short, gpdd_short_results, file = "./data/gpdd_results_update2.Rdata")
 
 #export E and tau for other analyses

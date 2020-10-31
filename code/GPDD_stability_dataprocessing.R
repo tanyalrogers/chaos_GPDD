@@ -184,6 +184,14 @@ gpdd_d$data_rescale=map(gpdd_d$data_fill, rescale)
 gpdd_d$data_rescale_case=map_dbl(gpdd_d$data_fill, rescale, diag=T)
 #table(gpdd_d$data_rescalediag)
 
+#sqrt transform
+sqrtrescale=function(data) {
+  data$PopSqrt=sqrt(data$PopulationUntransformed)/sd(sqrt(data$PopulationUntransformed), na.rm=T)
+  data$Pop=data$PopulationUntransformed/sd(data$PopulationUntransformed, na.rm=T)
+  return(as.data.frame(data))
+}
+gpdd_d$data_sqrt=map(gpdd_d$data_fill, sqrtrescale)
+
 #test for monotonic trends
 monotonic_eval=function(data) {
   (cor(data$SeriesStep, data$PopRescale, use="p", method="spearman"))^2
