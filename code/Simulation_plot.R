@@ -45,16 +45,16 @@ sims_vlong$error=ifelse(sims_vlong$Classification2==sims_vlong$Methodclass,0,1)
 
 mar1=sims_long %>%
   group_by(Method, TSlength) %>% summarize(errorrate=sum(error)/length(error)) %>% as.data.frame() %>% mutate(Dataset="Test Dataset") %>% 
-  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="Jacobian LE", LEreg="Direct LE"),Method2=factor(Method2, levels=c("DT","HVA","PE","RQA","Jacobian LE","Direct LE")))
+  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="JLE", LEreg="DLE"),Method2=factor(Method2, levels=c("DT","HVA","PE","RQA","JLE","DLE")))
 mar2=sims_long %>%
   group_by(Method, NoiseLevel2) %>% summarize(errorrate=sum(error)/length(error)) %>% as.data.frame() %>% mutate(Dataset="Test Dataset") %>% 
-  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="Jacobian LE", LEreg="Direct LE"),Method2=factor(Method2, levels=c("DT","HVA","PE","RQA","Jacobian LE","Direct LE")))
+  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="JLE", LEreg="DLE"),Method2=factor(Method2, levels=c("DT","HVA","PE","RQA","JLE","DLE")))
 mar1v=sims_vlong %>%
   group_by(Method, TSlength) %>% summarize(errorrate=sum(error)/length(error)) %>% as.data.frame() %>% mutate(Dataset="Validation Dataset") %>% 
-  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="Jacobian LE", LEreg="Direct LE"),Method2=factor(Method2, levels=c("DT","HVA","PE","RQA","Jacobian LE","Direct LE")))
+  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="JLE", LEreg="DLE"),Method2=factor(Method2, levels=c("DT","HVA","PE","RQA","JLE","DLE")))
 mar2v=sims_vlong %>%
   group_by(Method, NoiseLevel2) %>% summarize(errorrate=sum(error)/length(error)) %>% as.data.frame() %>% mutate(Dataset="Validation Dataset") %>% 
-  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="Jacobian LE", LEreg="Direct LE"),Method2=factor(Method2, levels=c("DT","HVA","PE","RQA","Jacobian LE","Direct LE")))
+  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="JLE", LEreg="DLE"),Method2=factor(Method2, levels=c("DT","HVA","PE","RQA","JLE","DLE")))
 mar1=rbind(mar1, mar1v)
 mar2=rbind(mar2, mar2v)
 
@@ -88,7 +88,7 @@ ggsave("./figures/marginal_errorrates.png", width = 6, height = 6)
 #by ts length and error rate (not used)
 mar3=sims_long %>%
   group_by(Method, TSlength, NoiseLevel2) %>% summarize(errorrate=sum(error)/length(error)) %>% as.data.frame() %>% 
-  mutate(Method2=sub("class","", Method), Method2=recode(Method2, LE="Jacobian LE", LEreg="Direct LE"),Method2=factor(Method2, levels=c("Direct LE", "Jacobian LE","RQA","PE","HVA","DT")))
+  mutate(Method2=sub("class","", Method), Method2=recode(Method2, LE="JLE", LEreg="DLE"),Method2=factor(Method2, levels=c("DLE", "JLE","RQA","PE","HVA","DT")))
 ggplot(mar3, aes(x=factor(NoiseLevel2), y=factor(TSlength), fill=errorrate)) +
   facet_wrap(.~Method2, ncol=3) + 
   geom_tile(stat = "identity") + 
@@ -99,7 +99,7 @@ ggplot(mar3, aes(x=factor(NoiseLevel2), y=factor(TSlength), fill=errorrate)) +
   removefacetbackground + theme(plot.title = element_text(hjust = 0.5, size=11), strip.text = element_text(size=10), legend.position = "bottom", panel.spacing = unit(0.5,"lines")) 
 mar3v=sims_vlong %>%
   group_by(Method, TSlength, NoiseLevel2) %>% summarize(errorrate=sum(error)/length(error)) %>% as.data.frame() %>% 
-  mutate(Method2=sub("class","", Method), Method2=recode(Method2, LE="Jacobian LE", LEreg="Direct LE"),Method2=factor(Method2, levels=c("Direct LE", "Jacobian LE","RQA","PE","HVA","DT")))
+  mutate(Method2=sub("class","", Method), Method2=recode(Method2, LE="JLE", LEreg="DLE"),Method2=factor(Method2, levels=c("DLE", "JLE","RQA","PE","HVA","DT")))
 ggplot(mar3v, aes(x=factor(NoiseLevel2), y=factor(TSlength), fill=errorrate)) +
   facet_wrap(.~Method2, ncol=3) + 
   geom_tile(stat = "identity") + 
@@ -117,8 +117,8 @@ summary=sims_long %>%
   complete(Method,nesting(Classification, Methodclass,NoiseLevel2,TSlength), fill=list(n=0)) %>% 
   group_by(NoiseLevel2,TSlength, Classification, Method) %>% 
   mutate(proportion=n/sum(n), Method2=sub("class","", Method), 
-         Method2=recode(Method2, LE="Jacobian LE", LEreg="Direct LE"),
-         Method2=factor(Method2, levels=c("Direct LE", "Jacobian LE","RQA","PE","HVA","DT")))
+         Method2=recode(Method2, LE="JLE", LEreg="DLE"),
+         Method2=factor(Method2, levels=c("DLE","JLE","RQA","PE","HVA","DT")))
 ggplot(filter(summary, Methodclass=="chaotic"), aes(x=factor(NoiseLevel2), y=Classification, fill=proportion)) +
   facet_grid(Method2~TSlength) + geom_tile(stat = "identity") + 
   geom_text(aes(label=round(proportion,2)), color="white", size=3) +
@@ -133,9 +133,9 @@ summary2=sims_long %>%
   group_by(Method,Classification,NoiseLevel2,TSlength, Model) %>% 
   summarize(proportion=length(which(Methodclass=="chaotic"))/length(Methodclass)) %>% 
   mutate(Method2=sub("class","", Method), 
-         Method2=recode(Method2, LE="Jacobian LE", LEreg="Direct LE"),
-         Method2=factor(Method2, levels=c("Direct LE", "Jacobian LE","RQA","PE","HVA","DT")))
-ggplot(filter(summary2, Method2 %in% c("Jacobian LE", "RQA", "PE")), aes(x=factor(NoiseLevel2), y=Model, fill=proportion)) +
+         Method2=recode(Method2, LE="JLE", LEreg="DLE"),
+         Method2=factor(Method2, levels=c("DLE","JLE","RQA","PE","HVA","DT")))
+ggplot(filter(summary2, Method2 %in% c("JLE", "RQA", "PE")), aes(x=factor(NoiseLevel2), y=Model, fill=proportion)) +
   facet_grid(Method2~TSlength) + geom_tile(stat = "identity") + 
   geom_hline(yintercept = c(7.5,14.5), color="white") +
   #geom_text(aes(label=round(proportion,2)), color="white", size=3) +
@@ -154,8 +154,8 @@ summary=sims_vlong %>%
   complete(Method,nesting(Classification, Methodclass,NoiseLevel2,TSlength), fill=list(n=0)) %>% 
   group_by(NoiseLevel2,TSlength, Classification, Method) %>% 
   mutate(proportion=n/sum(n), Method2=sub("class","", Method), 
-         Method2=recode(Method2, LE="Jacobian LE", LEreg="Direct LE"),
-         Method2=factor(Method2, levels=c("Direct LE", "Jacobian LE","RQA","PE","HVA","DT")))
+         Method2=recode(Method2, LE="JLE", LEreg="DLE"),
+         Method2=factor(Method2, levels=c("DLE", "JLE","RQA","PE","HVA","DT")))
 ggplot(filter(summary, Methodclass=="chaotic"), aes(x=factor(NoiseLevel2), y=Classification, fill=proportion)) +
   facet_grid(Method2~TSlength) + geom_tile(stat = "identity") + 
   geom_text(aes(label=round(proportion,2)), color="white", size=3) +
@@ -170,9 +170,9 @@ summary2=sims_vlong %>%
   group_by(Method,Classification,NoiseLevel2,TSlength, Model) %>% 
   summarize(proportion=length(which(Methodclass=="chaotic"))/length(Methodclass)) %>% 
   mutate(Method2=sub("class","", Method), 
-         Method2=recode(Method2, LE="Jacobian LE", LEreg="Direct LE"),
-         Method2=factor(Method2, levels=c("Direct LE", "Jacobian LE","RQA","PE","HVA","DT")))
-ggplot(filter(summary2, Method2 %in% c("Jacobian LE", "RQA", "PE")), aes(x=factor(NoiseLevel2), y=Model, fill=proportion)) +
+         Method2=recode(Method2, LE="JLE", LEreg="DLE"),
+         Method2=factor(Method2, levels=c("DLE", "JLE","RQA","PE","HVA","DT")))
+ggplot(filter(summary2, Method2 %in% c("JLE", "RQA", "PE")), aes(x=factor(NoiseLevel2), y=Model, fill=proportion)) +
   facet_grid(Method2~TSlength) + geom_tile(stat = "identity") + 
   geom_hline(yintercept = c(3.5,6.5), color="white") +
   #geom_text(aes(label=round(proportion,2)), color="white", size=3) +
@@ -195,7 +195,7 @@ plotprop1=function(method, title) {
     labs(y="True Dynamics", x="Classification", fill="Proportion", title = title) 
 }
 plotprop1("LEregclass", "Regression LE")
-plotprop1("LEclass", "Jacobian LE")
+plotprop1("LEclass", "JLE")
 plotprop1("RQAclass", "RQA")
 plotprop1("PEclass", "PE")
 plotprop1("HVAclass", "HVA")
@@ -209,7 +209,7 @@ plotprop2=function(method, title) {
     scale_y_continuous(expand = c(0,0)) + scale_x_discrete(expand = c(0,0))
 }
 plotprop2("LEregclass", "Regression LE")
-plotprop2("LEclass", "Jacobian LE")
+plotprop2("LEclass", "JLE")
 plotprop2("RQAclass", "RQA")
 plotprop2("PEclass", "PE")
 plotprop2("HVAclass", "HVA")
@@ -222,7 +222,7 @@ summary=rbind(sims_long, sims_vlong) %>%
   complete(Method,nesting(Classification, Methodclass,NoiseLevel2,TSlength), fill=list(n=0)) %>% 
   group_by(NoiseLevel2,TSlength, Classification, Method) %>% mutate(proportion=n/sum(n))
 plotprop1("LEregclass", "Regression LE")
-plotprop1("LEclass", "Jacobian LE")
+plotprop1("LEclass", "JLE")
 plotprop1("RQAclass", "RQA")
 plotprop1("PEclass", "PE")
 plotprop1("HVAclass", "HVA")
@@ -235,7 +235,7 @@ summary2=rbind(sims_long, sims_vlong) %>%
 modelorder2=as.character(unique(arrange(summary2, Classification, Model)$Model))
 summary2$Model=factor(summary2$Model, levels=modelorder2)
 plotprop2("LEregclass", "Regression LE")
-plotprop2("LEclass", "Jacobian LE")
+plotprop2("LEclass", "JLE")
 plotprop2("RQAclass", "RQA")
 plotprop2("PEclass", "PE")
 plotprop2("HVAclass", "HVA")

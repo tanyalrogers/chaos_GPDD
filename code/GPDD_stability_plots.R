@@ -19,6 +19,8 @@ gpdd_combo=read.csv("./data/gpdd_results_truncation_smap.csv")
 gpdd_other=read.csv("./data/gpdd_othermethods.csv")
 gpdd_d=left_join(gpdd_d, gpdd_other, by="MainID")
 
+gpdd_d$LEclass01=ifelse(gpdd_d$LEclass=="chaotic",1,0)
+
 #general stats
 
 #number of distinct taxa (138)
@@ -316,6 +318,12 @@ summary(lm(log10(MinAge_mo)~log10(timescale_MinAge), data=filter(gpdd_d, LEmin_m
 summary(lm(log10(LE_mo)~log10(Mass_g), data=agle))
 summary(lm(log10(LEmin_gen)~log10(Mass_g), data=filter(gpdd_d, LEmin_mo>0)))
 
+LEmin_mo=c(gpdd_d$LEmin_mo, agle$LE_mo)
+Mass=c(gpdd_d$Mass_g, agle$Mass_g)
+
+summary(lm(log10(LEmin_mo)~log10(Mass)))
+plot(log10(LEmin_mo)~log10(Mass))
+
 #all LE vs mass (cropped)
 ggplot(gpdd_d, aes(y=LEmin_gen, x=log10(Mass_g), color=TaxonomicClass3)) + 
   #facet_grid(predictable_ag~.) +
@@ -379,7 +387,6 @@ levarplot=ggplot(levar, aes(x=GTmid, y=log10(levar))) +
   classic + scale_x_continuous(limits = c(0.5,4), breaks=c(seq(0,4,1)))
 
 #classification by gen time by E ####
-gpdd_d$LEclass01=ifelse(gpdd_d$LEclass=="chaotic",1,0)
 classgtE=ggplot(gpdd_d, aes(y=LEclass01, x=log10(MinAge_mo), color=E)) + 
   ylab("Proportion Chaotic") + xlab(expression(~log[10]~Generation~Time~(months))) + 
   geom_jitter(size=3, alpha=0.7, width=0, height=0.03) +
@@ -519,13 +526,21 @@ ggsave("./figures/R2LE.png", width = 6, height = 5)
 
 
 #gle vs monotonic trend ####
-ggplot(gpdd_d, aes(y=LEmin_mo, x=monotonicR2, fill=TaxonomicClass3)) + 
+mtclass=ggplot(gpdd_d, aes(y=LEclass01, x=monotonicR2)) + 
+  ylab("Proportion chaotic") + xlab(expression(Monotonic~trend~R^2)) +
+  geom_jitter(aes(fill=TaxonomicClass3), width=0, height=0.03, size=2.5, pch=21, alpha=0.9, color="black") +
+  stat_smooth(method="glm", method.args=list(family="binomial"), color="black") +
+  classic + labs(fill="Taxonomic\nGroup") +scale_fill_brewer(palette = "Dark2")
+mtle=ggplot(gpdd_d, aes(y=LEmin_mo, x=monotonicR2, fill=TaxonomicClass3)) + 
   #facet_grid(TaxonomicClass3~.) + 
   ylab(expression(LE~(month^-1))) + xlab(expression(Monotonic~trend~R^2)) +
   geom_point(size=2.5, pch=21, alpha=0.9) +
   geom_hline(yintercept = 0) +
   classic + labs(fill="Taxonomic\nClass") +scale_fill_brewer(palette = "Dark2")
-ggsave("./figures/monotonictrend.png", width = 4.5, height = 3)
+mtplots=plot_grid(mtclass + theme(legend.position="none"), mtle + theme(legend.position="none"), nrow = 1, labels=c("A","B"))
+legend <- get_legend(mtclass + theme(legend.box.margin = margin(0, 0, 0, 3)))
+plot_grid(mtplots,legend, ncol = 2, rel_widths = c(1,0.25))
+ggsave("./figures/monotonictrend.png", width = 7, height = 3)
 
 
 #ts length vs monotonic trend
@@ -570,23 +585,22 @@ ggplot(gpdd_d, aes(y=LEmin_gen, x=abs(LatDD), fill=TaxonomicClass3, color=LEclas
   classic + labs(color="Classification", fill="Taxonomic\nClass") +
   ylim(c(-3,3))
 
-#gle vs growth rate
-gpdd_d$meangr=map_dbl(gpdd_d$data_rescale, ~mean(.x$PopRescale_gr, na.rm=T))
-gpdd_d$maxgr=map_dbl(gpdd_d$data_rescale, ~max(.x$PopRescale_gr, na.rm=T))
-gpdd_d$maxgr_mo=gpdd_d$maxgr/timescale_mo(gpdd_d$SamplingInterval,1)
-
-ggplot(gpdd_d, aes(y=LEmin_mo, x=meangr, color=TaxonomicClass3)) + 
-  facet_grid(.~E) +
-  ylab("LE lower bound (per month)") + xlab("Mean growth rate") + 
-  geom_point(size=2, alpha=0.5) +
-  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
-  classic + labs(color="Taxonomic\nClass")
-ggplot(gpdd_d, aes(y=LEmin_mo, x=maxgr, color=TaxonomicClass3)) + 
-  #facet_grid(.~E) +
-  ylab("LE lower bound (per month)") + xlab("Max growth rate") + 
-  geom_point(size=2, alpha=0.5) +
-  geom_hline(yintercept = 0) + #scale_color_manual(values=c("red", "black", NA)) +
-  classic + labs(color="Taxonomic\nClass")
+#gle vs growth rate ####
+grclass=ggplot(gpdd_d, aes(y=LEclass01, x=maxgr_mo)) + 
+  ylab("Proportion chaotic") + xlab(expression(Max~growth~rate~(month^-1))) +
+  geom_jitter(aes(fill=TaxonomicClass3), width=0, height=0.03, size=2.5, pch=21, alpha=0.9, color="black") +
+  stat_smooth(method="glm", method.args=list(family="binomial"), color="black") +
+  classic + labs(fill="Taxonomic\nGroup") +scale_fill_brewer(palette = "Dark2")
+grle=ggplot(gpdd_d, aes(y=LEmin_mo, x=maxgr_mo, fill=TaxonomicClass3)) + 
+  #facet_grid(TaxonomicClass3~.) + 
+  ylab(expression(LE~(month^-1))) + xlab(expression(Max~growth~rate~(month^-1))) +
+  geom_point(size=2.5, pch=21, alpha=0.9) +
+  geom_hline(yintercept = 0) +
+  classic + labs(fill="Taxonomic\nClass") +scale_fill_brewer(palette = "Dark2")
+grplots=plot_grid(grclass + theme(legend.position="none"), grle + theme(legend.position="none"), nrow = 1, labels=c("A","B"))
+legend <- get_legend(grclass + theme(legend.box.margin = margin(0, 0, 0, 3)))
+plot_grid(grplots,legend, ncol = 2, rel_widths = c(1,0.25))
+ggsave("./figures/growthrate.png", width = 7, height = 3)
 
 ggplot(gpdd_d, aes(y=log10(maxgr_mo), x=log10(Mass_g), color=LEclass)) + 
   #facet_grid(.~E) +

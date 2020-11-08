@@ -234,6 +234,10 @@ gpdd_results$jacobiansut=map(gpdd_results$modelresultsut, getJacobians)
 gpdd_results$LEshiftut=pmap(list(gpdd_results$modelresultsut, gpdd_results$jacobiansut, gpdd_d$SamplingInterval), LEshift)
 gpdd_d$LEmin_ut=map_dbl(gpdd_results$LEshiftut, ~.x$minci)
 
+#growth rates
+gpdd_d$meangr=map_dbl(gpdd_d$data_rescale, ~mean(.x$PopRescale_gr, na.rm=T))
+gpdd_d$maxgr=map_dbl(gpdd_d$data_rescale, ~max(.x$PopRescale_gr, na.rm=T))
+gpdd_d$maxgr_mo=gpdd_d$maxgr/timescale_mo(gpdd_d$SamplingInterval,1)
 
 #save
 save(gpdd_d, gpdd_results, gpdd_combo, gpdd_short, gpdd_short_results, file = "./data/gpdd_results_update2.Rdata")
@@ -246,7 +250,7 @@ write.csv(exportEtau, "./data/gpdd_Etau_smap.csv", row.names = F)
 exportres=select(gpdd_d, MainID, R2abund=bestR2, R2gr=bestR2m, predictable_ag, modelform, E, tau, theta, 
                  LEmean=minmean, LEmin=minci, LEmin_mo=minci_mo, LEmin_gen=minci_gen, LEclass=mincisign, 
                  LEmean1d=minmean1d, LEmin1d=minci1d, LEclass1d=mincisign1d, LLE_proppos=lle_pp, LEreg, LEreg_se, LEregmin, 
-                 LEsibly, LEvar=varmin, LEvar_mo=varmin_mo, logerror, slope)
+                 LEsibly, LEvar=varmin, LEvar_mo=varmin_mo, logerror, slope, maxgr_mo)
 write.csv(exportres, "./data/gpdd_results_smap.csv", row.names = F)
 exportres2=select(gpdd_combo, MainID, datasetlength, tslengthcat, timescale_MinAge, MinAge_mo, Mass_g, R2abund=bestR2, R2gr=bestR2m, predictable_ag, E, tau, theta, 
                  LEmean=minmean, LEmin=minci, LEmin_mo=minci_mo, LEmin_gen=minci_gen, LEclass=mincisign)

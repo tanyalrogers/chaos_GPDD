@@ -1,4 +1,4 @@
-Species,Reg,TaxonomicClass3,Origin,BM_ug,Mass_g,GT,MinAge_mo,TS,LE,LE_mo,N,SD,Refs
+Species,Reg,TaxonomicClass3,Origin,BM_ug,Mass_g,GT_d,MinAge_mo,TS_d,LE_d,LE_mo,N,SD,Refs
 Tetrahymena pyriformis+,1,Microbes,lab,3.20E-02,3.20E-08,1.28,0.042666667,1,0.146,4.38,12,0.043,[1–3]/[1]/[2]
 Brevundimonas,0,Microbes,lab,8.20E-06,8.20E-12,0.36,0.012,1,0.182,5.46,7,0.115,[1–3]/[1]/[2]
 Pedobacter,0,Microbes,lab,1.60E-06,1.60E-12,0.23,0.007666667,1,0.125,3.75,7,0.094,[1–3]/[1]/[2]

@@ -443,3 +443,20 @@ write.csv(sims_d, "./data/sims_test_results_allmethods.csv", row.names = F)
 write.csv(sims_v, "./data/sims_validation_results_allmethods.csv", row.names = F)
 write.csv(sims_v2, "./data/sims_validation_results_forcedAR_allmethods.csv", row.names = F)
 
+#test with known LE ####
+sims=read.csv("./data/ModelsWithKnownLEs.csv")
+sims_d=sims %>%  
+  gather(SimNumber, Value, Sim.1:Sim.4) %>% 
+  group_by(SimNumber) %>% nest() %>% 
+  mutate(data=map(data, as.data.frame))
+sims_d$modelresults1=map(sims_d$data, smap_model_options, y="Value", model=1)
+sims_d$jacobians=map(sims_d$modelresults1, getJacobians)
+sims_d$LEshift=map2(sims_d$modelresults1, sims_d$jacobians, LEshift)
+sims_d$minci=map_dbl(sims_d$LEshift, ~.x$minci)
+sims_d$R2best=map_dbl(sims_d$modelresults1, ~.x$modelstats$R2abund)
+
+sims_d$regLE=map2(sims_d$data, sims_d$modelresults1, regLE, y="Value")
+sims_d$LEreg=map_dbl(sims_d$regLE, ~.x$LEreg)
+sims_d$LEreg_se=map_dbl(sims_d$regLE, ~.x$LEreg_se)
+sims_d$LEregmin=sims_d$LEreg-1.96*sims_d$LEreg_se
+
