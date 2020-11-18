@@ -236,7 +236,7 @@ gpdd_d$LEmin_ut=map_dbl(gpdd_results$LEshiftut, ~.x$minci)
 
 #growth rates
 gpdd_d$meangr=map_dbl(gpdd_d$data_rescale, ~mean(.x$PopRescale_gr, na.rm=T))
-gpdd_d$maxgr=map_dbl(gpdd_d$data_rescale, ~max(.x$PopRescale_gr, na.rm=T))
+gpdd_d$maxgr=map_dbl(gpdd_d$data_rescale, ~quantile(.x$PopRescale_gr, probs=0.9, na.rm=T))
 gpdd_d$maxgr_mo=gpdd_d$maxgr/timescale_mo(gpdd_d$SamplingInterval,1)
 
 #save

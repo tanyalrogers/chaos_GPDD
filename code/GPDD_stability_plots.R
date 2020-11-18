@@ -318,6 +318,14 @@ summary(lm(log10(MinAge_mo)~log10(timescale_MinAge), data=filter(gpdd_d, LEmin_m
 summary(lm(log10(LE_mo)~log10(Mass_g), data=agle))
 summary(lm(log10(LEmin_gen)~log10(Mass_g), data=filter(gpdd_d, LEmin_mo>0)))
 
+anova(lm(log10(LEmin_mo)~log10(Mass_g)*maxgr_mo, data=filter(gpdd_d, LEmin_mo>0)))
+anova(lm(LEmin_mo~log10(MinAge_mo)*log10(Mass_g), data=gpdd_d))
+anova(lm(LEmin_mo~log10(MinAge_mo)*maxgr_mo, data=gpdd_d))
+anova(lm(LEmin_mo~log10(MinAge_mo)*maxgr_mo*E, data=gpdd_d))
+
+m1=lm(LEmin_mo~log10(Mass_g), data=gpdd_d)
+m2=lm(LEmin_mo~log10(MinAge_mo)+log10(Mass_g), data=gpdd_d)
+
 LEmin_mo=c(gpdd_d$LEmin_mo, agle$LE_mo)
 Mass=c(gpdd_d$Mass_g, agle$Mass_g)
 
@@ -543,6 +551,7 @@ plot_grid(mtplots,legend, ncol = 2, rel_widths = c(1,0.25))
 ggsave("./figures/monotonictrend.png", width = 7, height = 3)
 
 
+
 #ts length vs monotonic trend
 ggplot(gpdd_d, aes(y=monotonicR2, x=log10(timestep_MinAge), color=TaxonomicClass3)) + 
   #facet_grid(predictable_ag~.) + 
@@ -587,13 +596,13 @@ ggplot(gpdd_d, aes(y=LEmin_gen, x=abs(LatDD), fill=TaxonomicClass3, color=LEclas
 
 #gle vs growth rate ####
 grclass=ggplot(gpdd_d, aes(y=LEclass01, x=maxgr_mo)) + 
-  ylab("Proportion chaotic") + xlab(expression(Max~growth~rate~(month^-1))) +
+  ylab("Proportion chaotic") + xlab(expression(Growth~rate~(month^-1))) +
   geom_jitter(aes(fill=TaxonomicClass3), width=0, height=0.03, size=2.5, pch=21, alpha=0.9, color="black") +
   stat_smooth(method="glm", method.args=list(family="binomial"), color="black") +
   classic + labs(fill="Taxonomic\nGroup") +scale_fill_brewer(palette = "Dark2")
 grle=ggplot(gpdd_d, aes(y=LEmin_mo, x=maxgr_mo, fill=TaxonomicClass3)) + 
   #facet_grid(TaxonomicClass3~.) + 
-  ylab(expression(LE~(month^-1))) + xlab(expression(Max~growth~rate~(month^-1))) +
+  ylab(expression(LE~(month^-1))) + xlab(expression(Growth~rate~(month^-1))) +
   geom_point(size=2.5, pch=21, alpha=0.9) +
   geom_hline(yintercept = 0) +
   classic + labs(fill="Taxonomic\nClass") +scale_fill_brewer(palette = "Dark2")
@@ -602,9 +611,27 @@ legend <- get_legend(grclass + theme(legend.box.margin = margin(0, 0, 0, 3)))
 plot_grid(grplots,legend, ncol = 2, rel_widths = c(1,0.25))
 ggsave("./figures/growthrate.png", width = 7, height = 3)
 
+mg1=glm(LEclass01~TaxonomicClass3, data=gpdd_d, family="binomial")
+mg2=glm(LEclass01~maxgr_mo, data=gpdd_d, family="binomial")
+mg3=glm(LEclass01~maxgr_mo+TaxonomicClass3, data=gpdd_d, family="binomial")
+mg4=glm(LEclass01~log10(MinAge_mo)+maxgr_mo+TaxonomicClass3, data=gpdd_d, family="binomial")
+mg4=glm(LEclass01~log10(Mass_g)+maxgr_mo+TaxonomicClass3, data=gpdd_d, family="binomial")
+car::Anova(mg4)
+anova(mg2, mg3, test = "LRT")
+anova(mg1, mg3, test = "LRT")
+
+mg1=glm(LEclass01~maxgr_mo+log10(Mass_g), data=filter(gpdd_d,!is.na(gpdd_d$MinAge_mo)), family="binomial")
+mg2=glm(LEclass01~log10(Mass_g), data=filter(gpdd_d,!is.na(gpdd_d$MinAge_mo)), family="binomial")
+anova(mg1, mg2, test = "LRT")
+
 ggplot(gpdd_d, aes(y=log10(maxgr_mo), x=log10(Mass_g), color=LEclass)) + 
   #facet_grid(.~E) +
   ylab("log10 Max growth rate (monthly)") + xlab("log10 Mass(g)") + 
+  geom_point(size=2, alpha=0.5) +
+  classic + labs(color="Classification")
+ggplot(gpdd_d, aes(y=maxgr_mo, x=log10(MinAge_mo), color=LEclass)) + 
+  #facet_grid(.~E) +
+  ylab("Max growth rate (monthly)") + xlab("log10 Generation Time") + 
   geom_point(size=2, alpha=0.5) +
   classic + labs(color="Classification")
 
