@@ -45,16 +45,16 @@ sims_vlong$error=ifelse(sims_vlong$Classification2==sims_vlong$Methodclass,0,1)
 
 mar1=sims_long %>%
   group_by(Method, TSlength) %>% summarize(errorrate=sum(error)/length(error)) %>% as.data.frame() %>% mutate(Dataset="Test Dataset") %>% 
-  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="JLE", LEreg="DLE"),Method2=factor(Method2, levels=c("DT","HVA","PE","RQA","JLE","DLE")))
+  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="JLE", LEreg="DLE", DT="CDT", HVA="HVG"),Method2=factor(Method2, levels=c("CDT","HVG","PE","RQA","JLE","DLE")))
 mar2=sims_long %>%
   group_by(Method, NoiseLevel2) %>% summarize(errorrate=sum(error)/length(error)) %>% as.data.frame() %>% mutate(Dataset="Test Dataset") %>% 
-  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="JLE", LEreg="DLE"),Method2=factor(Method2, levels=c("DT","HVA","PE","RQA","JLE","DLE")))
+  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="JLE", LEreg="DLE", DT="CDT", HVA="HVG"),Method2=factor(Method2, levels=c("CDT","HVG","PE","RQA","JLE","DLE")))
 mar1v=sims_vlong %>%
   group_by(Method, TSlength) %>% summarize(errorrate=sum(error)/length(error)) %>% as.data.frame() %>% mutate(Dataset="Validation Dataset") %>% 
-  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="JLE", LEreg="DLE"),Method2=factor(Method2, levels=c("DT","HVA","PE","RQA","JLE","DLE")))
+  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="JLE", LEreg="DLE", DT="CDT", HVA="HVG"),Method2=factor(Method2, levels=c("CDT","HVG","PE","RQA","JLE","DLE")))
 mar2v=sims_vlong %>%
   group_by(Method, NoiseLevel2) %>% summarize(errorrate=sum(error)/length(error)) %>% as.data.frame() %>% mutate(Dataset="Validation Dataset") %>% 
-  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="JLE", LEreg="DLE"),Method2=factor(Method2, levels=c("DT","HVA","PE","RQA","JLE","DLE")))
+  mutate(Method2=sub("class","", Method),Method2=recode(Method2, LE="JLE", LEreg="DLE", DT="CDT", HVA="HVG"),Method2=factor(Method2, levels=c("CDT","HVG","PE","RQA","JLE","DLE")))
 mar1=rbind(mar1, mar1v)
 mar2=rbind(mar2, mar2v)
 
@@ -117,8 +117,8 @@ summary=sims_long %>%
   complete(Method,nesting(Classification, Methodclass,NoiseLevel2,TSlength), fill=list(n=0)) %>% 
   group_by(NoiseLevel2,TSlength, Classification, Method) %>% 
   mutate(proportion=n/sum(n), Method2=sub("class","", Method), 
-         Method2=recode(Method2, LE="JLE", LEreg="DLE"),
-         Method2=factor(Method2, levels=c("DLE","JLE","RQA","PE","HVA","DT")))
+         Method2=recode(Method2, LE="JLE", LEreg="DLE", DT="CDT", HVA="HVG"),
+         Method2=factor(Method2, levels=c("DLE","JLE","RQA","PE","HVG","CDT")))
 ggplot(filter(summary, Methodclass=="chaotic"), aes(x=factor(NoiseLevel2), y=Classification, fill=proportion)) +
   facet_grid(Method2~TSlength) + geom_tile(stat = "identity") + 
   geom_text(aes(label=round(proportion,2)), color="white", size=3) +
@@ -133,8 +133,8 @@ summary2=sims_long %>%
   group_by(Method,Classification,NoiseLevel2,TSlength, Model) %>% 
   summarize(proportion=length(which(Methodclass=="chaotic"))/length(Methodclass)) %>% 
   mutate(Method2=sub("class","", Method), 
-         Method2=recode(Method2, LE="JLE", LEreg="DLE"),
-         Method2=factor(Method2, levels=c("DLE","JLE","RQA","PE","HVA","DT")))
+         Method2=recode(Method2, LE="JLE", LEreg="DLE", DT="CDT", HVA="HVG"),
+         Method2=factor(Method2, levels=c("DLE","JLE","RQA","PE","HVG","CDT")))
 ggplot(filter(summary2, Method2 %in% c("JLE", "RQA", "PE")), aes(x=factor(NoiseLevel2), y=Model, fill=proportion)) +
   facet_grid(Method2~TSlength) + geom_tile(stat = "identity") + 
   geom_hline(yintercept = c(7.5,14.5), color="white") +
@@ -154,8 +154,8 @@ summary=sims_vlong %>%
   complete(Method,nesting(Classification, Methodclass,NoiseLevel2,TSlength), fill=list(n=0)) %>% 
   group_by(NoiseLevel2,TSlength, Classification, Method) %>% 
   mutate(proportion=n/sum(n), Method2=sub("class","", Method), 
-         Method2=recode(Method2, LE="JLE", LEreg="DLE"),
-         Method2=factor(Method2, levels=c("DLE", "JLE","RQA","PE","HVA","DT")))
+         Method2=recode(Method2, LE="JLE", LEreg="DLE", DT="CDT", HVA="HVG"),
+         Method2=factor(Method2, levels=c("DLE", "JLE","RQA","PE","HVG","CDT")))
 ggplot(filter(summary, Methodclass=="chaotic"), aes(x=factor(NoiseLevel2), y=Classification, fill=proportion)) +
   facet_grid(Method2~TSlength) + geom_tile(stat = "identity") + 
   geom_text(aes(label=round(proportion,2)), color="white", size=3) +
@@ -170,8 +170,8 @@ summary2=sims_vlong %>%
   group_by(Method,Classification,NoiseLevel2,TSlength, Model) %>% 
   summarize(proportion=length(which(Methodclass=="chaotic"))/length(Methodclass)) %>% 
   mutate(Method2=sub("class","", Method), 
-         Method2=recode(Method2, LE="JLE", LEreg="DLE"),
-         Method2=factor(Method2, levels=c("DLE", "JLE","RQA","PE","HVA","DT")))
+         Method2=recode(Method2, LE="JLE", LEreg="DLE", DT="CDT", HVA="HVG"),
+         Method2=factor(Method2, levels=c("DLE", "JLE","RQA","PE","HVG","CDT")))
 ggplot(filter(summary2, Method2 %in% c("JLE", "RQA", "PE")), aes(x=factor(NoiseLevel2), y=Model, fill=proportion)) +
   facet_grid(Method2~TSlength) + geom_tile(stat = "identity") + 
   geom_hline(yintercept = c(3.5,6.5), color="white") +
