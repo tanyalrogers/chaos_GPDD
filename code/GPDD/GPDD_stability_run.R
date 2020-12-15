@@ -7,7 +7,7 @@ library("dplyr")
 library("tidyr")
 library("purrr")
 
-source("./code/GPDD_stability_functions.R")
+source("./code/Methods/LE_ChaosDetectionMethods.R")
 
 gpdd_d=read.csv("./data/gpdd_ts_metadata.csv")
 gpdd_d_ts=read.csv("./data/gpdd_timeseries.csv")
