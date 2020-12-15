@@ -1,11 +1,11 @@
 # Simulated data
 
-library("ggplot2")
 library("dplyr")
 library("tidyr")
 library("rEDM")
 library("purrr")
 library("furrr")
+library("ggplot2")
 
 source("./code/GPDD_stability_functions.R")
 source("./code/ggplot themes rogers.R")
@@ -13,7 +13,7 @@ source("./code/ggplot themes rogers.R")
 #to run in parallel
 plan(multisession, workers = 4)
 
-#plot timeseries ####
+#plot timeseries
 sims_plot=filter(sims_d, SimNumber=="Sim.3" & TSlength==50 & NoiseLevel==0.3)
 par(mfrow=c(2,3))
 for(i in 1:nrow(sims_plot)) {
@@ -22,8 +22,8 @@ for(i in 1:nrow(sims_plot)) {
   #pacf(dtemp$Value,main=sims_plot$Model[i])
 }
 
-#test with known E and tau ####
-sims=read.csv("./data/KnownEandTau2.csv")
+#### Simulations with known E and tau (embedding dataset) ####
+sims=read.csv("./data/simulation_dataset_embedding.csv")
 sims_d=select(sims, TSlength=Time.Series.Length, Known.Tau, Known.E, TimeStep=Time.Step, Sim.1:Sim.10) %>% 
   gather(SimNumber, Value, Sim.1:Sim.10) %>% 
   group_by(TSlength,Known.Tau, Known.E,SimNumber) %>% nest() %>% 
@@ -31,7 +31,6 @@ sims_d=select(sims, TSlength=Time.Series.Length, Known.Tau, Known.E, TimeStep=Ti
 sims_d$modelresults1=map(sims_d$data, smap_model_options, y="Value", model=1)
 sims_d$modelresults2=map(sims_d$data, smap_model_options, y="Value", model=2)
 sims_d$modelresults4=map(sims_d$data, smap_model_options, y="Value", model=4)
-#sims_d$modelresults4=pmap(list(sims_d$data, Efix=sims_d$Known.E, taufix=sims_d$Known.Tau), smap_model_options, y="Value", model=4)
 sims_d$R1a=map_dbl(sims_d$modelresults1, ~.x$modelstats$R2abund)
 sims_d$Ebest1=map_dbl(sims_d$modelresults1, ~.x$modelstats$E)
 sims_d$taubest1=map_dbl(sims_d$modelresults1, ~.x$modelstats$tau)
@@ -51,9 +50,8 @@ ggplot(sims_d, aes(x=Ebest4, y=taubest4)) +
 
 save(sims_d,  file = "./data/sims_results_knownEtau.Rdata")
 
-#test with known dynamics ####
-sims=read.csv("./data/ChaosMetaAnalysisSimulatedDataCORRECTED3.csv")
-sims$Classification=recode(sims$Classification, Periodic="periodic")
+#### Test dataset with known dynamics ####
+sims=read.csv("./data/simulation_dataset_test.csv")
 
 #first 20 reps
 sims_d=select(sims, ID, Model, TimeStep, NoiseLevel, Classification, Sim.1:Sim.20) %>% 
@@ -61,7 +59,6 @@ sims_d=select(sims, ID, Model, TimeStep, NoiseLevel, Classification, Sim.1:Sim.2
   group_by(ID,Model,Classification,NoiseLevel,SimNumber) %>%  mutate(TSlength=length(Value)) %>% ungroup() %>% 
   group_by(ID,Model,Classification,NoiseLevel,TSlength,SimNumber) %>% nest() %>% 
   mutate(data=map(data, as.data.frame)) %>% ungroup()
-  #left_join(sims_Etau, by=c("ID", "SimNumber"))
 modelorder=unique(arrange(sims_d, Classification, Model)$Model)
 sims_d$Model=factor(sims_d$Model, levels=modelorder)
 
@@ -233,8 +230,8 @@ sims_d$modelform=map_chr(sims_results$modelresultsbest, ~.x$form)
 dexport=select(sims_d, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, LEmean=minmean, LEmin=minci, LEreg, LEreg_se)
 write.csv(dexport,"./data/sims_test_results.csv", row.names = F)
 
-#validation data ####
-sims=read.csv("./data/ChaosMetaAnalysisSimulatedDataVALIDATION.csv")
+#### Validation dataset with known dynamics ####
+sims=read.csv("./data/simulation_dataset_validation.csv")
 
 sims_v=select(sims, ID, Model, TimeStep, NoiseLevel, TSlength=TimeSeriesLength, Classification, Sim.1:Sim.100) %>% 
   gather(SimNumber, Value, Sim.1:Sim.100) %>% 
@@ -246,9 +243,7 @@ sims_v$Model=factor(sims_v$Model, levels=modelorder)
 #set up results df
 sims_vresults=select(sims_v, ID, SimNumber, Model)
 #get hyperparameters (this takes a long time)
-start=Sys.time()
 sims_vresults$hpar1=future_map(sims_v$data, besthyper, y="Value", ylog=F, pgr="none")
-end=Sys.time(); end-start
 #get model output
 sims_vresults$modelresults1=map2(sims_v$data, sims_vresults$hpar1, smap_model_options, y="Value", model=1)
 #get R2
@@ -279,7 +274,6 @@ sims_vresults$modelresultsbest=ifelse(sims_v$Model %in% logmodels,
 
 #get stability
 sims_vresults$jacobians=map(sims_vresults$modelresultsbest, getJacobians)
-sims_vresults$stability=map2(sims_vresults$modelresultsbest, sims_vresults$jacobians, getStability)
 sims_vresults$LEshift=map2(sims_vresults$modelresultsbest, sims_vresults$jacobians, LEshift)
 
 #pull results
@@ -287,7 +281,6 @@ sims_v$Ebest=map_dbl(sims_vresults$modelresultsbest, ~.x$modelstats$E)
 sims_v$taubest=map_dbl(sims_vresults$modelresultsbest, ~.x$modelstats$tau)
 sims_v$thetabest=map_dbl(sims_vresults$modelresultsbest, ~.x$modelstats$theta)
 sims_v$R2best=map_dbl(sims_vresults$modelresultsbest, ~.x$modelstats$R2abund)
-sims_v$gle=map_dbl(sims_vresults$stability, ~.x$gle)
 sims_v$minmean=map_dbl(sims_vresults$LEshift, ~.x$minmean)
 sims_v$minci=map_dbl(sims_vresults$LEshift, ~.x$minci)
 
@@ -441,7 +434,38 @@ sims_v2=left_join(sims_v2, RQAclassv) %>% left_join(PEclassv) %>%
 #write data
 write.csv(sims_d, "./data/sims_test_results_allmethods.csv", row.names = F)
 write.csv(sims_v, "./data/sims_validation_results_allmethods.csv", row.names = F)
-write.csv(sims_v2, "./data/sims_validation_results_forcedAR_allmethods.csv", row.names = F)
+
+
+#Merge other methods 
+
+RQAclass=read.csv("./data/RQAclassification.csv") %>% gather(SimNumber, RQAclass, Sim.1:Sim.100)
+PEclass=read.csv("./data/PEclassification.csv") %>% gather(SimNumber, PEclass, Sim.1:Sim.100)
+HVAclass=read.csv("./data/HVAclassification.csv") %>% gather(SimNumber, HVAclass, Sim.1:Sim.100)
+DTclass=read.csv("./data/DTclassification.csv") %>% gather(SimNumber, DTclass, Sim.1:Sim.100)
+#join to main table
+classt=left_join(RQAclass, PEclass) %>% 
+  left_join(HVAclass) %>% left_join(DTclass)
+write.csv(classt, "./data/sims_test_results_othermethods.csv", row.names = F)
+
+#class other methods
+RQAclassv=read.csv("./data/RQAclassification_validation.csv") %>% gather(SimNumber, RQAclass, Sim.1:Sim.100)
+PEclassv=read.csv("./data/PEclassification_validation.csv") %>% gather(SimNumber, PEclass, Sim.1:Sim.100)
+HVAclassv=read.csv("./data/HVAclassification_validation.csv") %>% gather(SimNumber, HVAclass, Sim.1:Sim.100)
+DTclassv=read.csv("./data/DTclassification_validation.csv") %>% gather(SimNumber, DTclass, Sim.1:Sim.100)
+#join to main table
+class_v=left_join(RQAclassv, PEclassv) %>%
+  left_join(HVAclassv) %>% left_join(DTclassv)
+#class other methods
+RQAclassv=read.csv("./data/RQAclassification_forcedAR.csv", stringsAsFactors = F) %>% gather(SimNumber, RQAclass, Sim.1:Sim.100)
+PEclassv=read.csv("./data/PEclassification_forcedAR.csv", stringsAsFactors = F) %>% gather(SimNumber, PEclass, Sim.1:Sim.100)
+HVAclassv=read.csv("./data/HVAclassification_forcedAR.csv", stringsAsFactors = F) %>% gather(SimNumber, HVAclass, Sim.1:Sim.100)
+DTclassv=read.csv("./data/DTclassification_forcedAR.csv", stringsAsFactors = F) %>% gather(SimNumber, DTclass, Sim.1:Sim.100)
+#join to main table
+class_v2=left_join(RQAclassv, PEclassv) %>%
+  left_join(HVAclassv) %>% left_join(DTclassv)
+class_v2$ID=class_v2$ID+180
+classval=rbind(class_v,class_v2)
+write.csv(classval, "./data/sims_validation_results_othermethods.csv", row.names = F)
 
 #test with known LE ####
 sims=read.csv("./data/ModelsWithKnownLEs.csv")
