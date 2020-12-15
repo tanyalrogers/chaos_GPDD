@@ -7,7 +7,7 @@ library("tidyr")
 library("rEDM")
 library(cowplot)
 
-source("./code/ggplot themes rogers.R")
+source("./code/Simulations/ggplot_themes_rogers.R")
 
 #load data
 sims_d=read.csv("./data/sims_test_results.csv")

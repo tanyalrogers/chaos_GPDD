@@ -6,7 +6,7 @@ library(dplyr)
 library(tidyr)
 library(cowplot)
 
-source("./code/ggplot themes rogers.R")
+source("./code/Simulations/ggplot_themes_rogers.R")
 
 #LE chaos detection results
 gpdd_d=read.csv("./data/gpdd_ts_metadata.csv", stringsAsFactors = F)

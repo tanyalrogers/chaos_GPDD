@@ -9,7 +9,7 @@ library("furrr")
 library("ggplot2")
 
 source("./code/GPDD_stability_functions.R")
-source("./code/ggplot themes rogers.R")
+source("./code/Simulations/ggplot_themes_rogers.R")
 
 #to run in parallel
 plan(multisession, workers = 4)
