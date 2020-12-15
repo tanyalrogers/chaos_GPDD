@@ -1,4 +1,4 @@
-# Applies Jacobian LE chaos detection methods to GPDD
+# Applies Jacobian LE chaos detection method to GPDD
 # Includes selection of E and tau used by RQA
 # Tanya Rogers
 

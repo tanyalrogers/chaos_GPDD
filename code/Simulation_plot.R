@@ -1,4 +1,5 @@
-# Plot simuation results
+# Plots of simuation results
+# Tanya Rogers
 
 library("ggplot2")
 library("dplyr")
@@ -8,11 +9,14 @@ library(cowplot)
 
 source("./code/ggplot themes rogers.R")
 
-#load data ####
-sims_d=read.csv("./data/sims_test_results_allmethods.csv")
-sims_v=read.csv("./data/sims_validation_results_allmethods.csv")
-sims_v2=read.csv("./data/sims_validation_results_forcedAR_allmethods.csv")
-sims_v=rbind(sims_v, sims_v2)
+#load data
+sims_d=read.csv("./data/sims_test_results.csv")
+sims_v=read.csv("./data/sims_validation_results.csv")
+sims_d2=read.csv("./data/sims_test_results_othermethods.csv")
+sims_v2=read.csv("./data/sims_validation_results_othermethods.csv")
+
+sims_d=left_join(sims_d, sims_d2)
+sims_v=left_join(sims_v, sims_v2)
 
 #set model order
 modelorder=unique(arrange(sims_d, Classification, Model)$Model)
@@ -109,9 +113,9 @@ ggplot(mar3v, aes(x=factor(NoiseLevel2), y=factor(TSlength), fill=errorrate)) +
   scale_fill_distiller(palette = "Reds", direction = 1) +
   removefacetbackground + theme(plot.title = element_text(hjust = 0.5, size=11), strip.text = element_text(size=10), legend.position = "bottom", panel.spacing = unit(0.5,"lines")) 
 
-#test data ####
+#Test dataset ####
 
-#proportion correct classifications, across all models/methods ####
+#proportion correct classifications, across all models/methods
 summary=sims_long %>% 
   group_by(Method,Classification,Methodclass,NoiseLevel2,TSlength) %>% summarize(n=n()) %>% ungroup() %>% 
   complete(Method,nesting(Classification, Methodclass,NoiseLevel2,TSlength), fill=list(n=0)) %>% 
@@ -128,7 +132,7 @@ ggplot(filter(summary, Methodclass=="chaotic"), aes(x=factor(NoiseLevel2), y=Cla
                                 panel.spacing.x = unit(0.2,"lines")) 
 ggsave("./figures/SimResults.png", width = 7, height = 7)
 
-#proportion correct classifications, individual models, top 3 methods ####
+#proportion correct classifications, individual models, top 3 methods
 summary2=sims_long %>% 
   group_by(Method,Classification,NoiseLevel2,TSlength, Model) %>% 
   summarize(proportion=length(which(Methodclass=="chaotic"))/length(Methodclass)) %>% 
@@ -146,9 +150,9 @@ ggplot(filter(summary2, Method2 %in% c("JLE", "RQA", "PE")), aes(x=factor(NoiseL
                                 panel.spacing.x = unit(0.2,"lines")) 
 ggsave("./figures/SimResultsIndivModels.png", width = 7, height = 8)
 
-#validation data ####
+#Validation data ####
 
-#proportion correct classifications, across all models/methods ####
+#proportion correct classifications, across all models/methods
 summary=sims_vlong %>% 
   group_by(Method,Classification,Methodclass,NoiseLevel2,TSlength) %>% summarize(n=n()) %>% ungroup() %>% 
   complete(Method,nesting(Classification, Methodclass,NoiseLevel2,TSlength), fill=list(n=0)) %>% 
@@ -165,7 +169,7 @@ ggplot(filter(summary, Methodclass=="chaotic"), aes(x=factor(NoiseLevel2), y=Cla
                                 panel.spacing.x = unit(0.2,"lines")) 
 ggsave("./figures/SimResults_validation.png", width = 7, height = 7)
 
-#proportion correct classifications, individual models, top 3 methods ####
+#proportion correct classifications, individual models, top 3 methods
 summary2=sims_vlong %>% 
   group_by(Method,Classification,NoiseLevel2,TSlength, Model) %>% 
   summarize(proportion=length(which(Methodclass=="chaotic"))/length(Methodclass)) %>% 
@@ -182,111 +186,3 @@ ggplot(filter(summary2, Method2 %in% c("JLE", "RQA", "PE")), aes(x=factor(NoiseL
                                 axis.text.y = element_text(size=8, color=c(rep(c("black","royalblue","seagreen"), each=3),"seagreen")),
                                 panel.spacing.x = unit(0.2,"lines")) 
 ggsave("./figures/SimResultsIndivModels_validation.png", width = 7, height = 6)
-
-
-
-# misc other plots (not used) ####
-
-plotprop1=function(method, title) {
-  ggplot(filter(summary, Method==method), aes(x=Methodclass, y=Classification, fill=proportion)) +
-    facet_grid(TSlength~NoiseLevel2) + geom_tile(stat = "identity") + 
-    geom_text(aes(label=round(proportion,2)), color="white") +
-    classic + scale_x_discrete(expand = c(0,0)) + scale_y_discrete(expand = c(0,0)) +
-    labs(y="True Dynamics", x="Classification", fill="Proportion", title = title) 
-}
-plotprop1("LEregclass", "Regression LE")
-plotprop1("LEclass", "JLE")
-plotprop1("RQAclass", "RQA")
-plotprop1("PEclass", "PE")
-plotprop1("HVAclass", "HVA")
-plotprop1("DTclass", "DT")
-
-plotprop2=function(method, title) {
-  ggplot(filter(summary2, Method==method), aes(x=Model, y=LE_pp, fill=Classification)) +
-    facet_grid(TSlength~NoiseLevel2) + classic + xlabvert +
-    geom_bar(stat = "identity", color="black") + 
-    labs(fill="True\nModel\nDynamics", y="Proportion Classified Chaotic", title=title) + 
-    scale_y_continuous(expand = c(0,0)) + scale_x_discrete(expand = c(0,0))
-}
-plotprop2("LEregclass", "Regression LE")
-plotprop2("LEclass", "JLE")
-plotprop2("RQAclass", "RQA")
-plotprop2("PEclass", "PE")
-plotprop2("HVAclass", "HVA")
-plotprop2("DTclass", "DT")
-
-#test and validation together
-#proportion correct classifications, across all models
-summary=rbind(sims_long, sims_vlong) %>% 
-  group_by(Method,Classification,Methodclass,NoiseLevel2,TSlength) %>% summarize(n=n()) %>% ungroup() %>% 
-  complete(Method,nesting(Classification, Methodclass,NoiseLevel2,TSlength), fill=list(n=0)) %>% 
-  group_by(NoiseLevel2,TSlength, Classification, Method) %>% mutate(proportion=n/sum(n))
-plotprop1("LEregclass", "Regression LE")
-plotprop1("LEclass", "JLE")
-plotprop1("RQAclass", "RQA")
-plotprop1("PEclass", "PE")
-plotprop1("HVAclass", "HVA")
-plotprop1("DTclass", "DT")
-
-#proportion correct classifications, individual models
-summary2=rbind(sims_long, sims_vlong) %>% 
-  group_by(Method,Classification,NoiseLevel2,TSlength, Model) %>% 
-  summarize(LE_pp=length(which(Methodclass=="chaotic"))/length(Methodclass))
-modelorder2=as.character(unique(arrange(summary2, Classification, Model)$Model))
-summary2$Model=factor(summary2$Model, levels=modelorder2)
-plotprop2("LEregclass", "Regression LE")
-plotprop2("LEclass", "JLE")
-plotprop2("RQAclass", "RQA")
-plotprop2("PEclass", "PE")
-plotprop2("HVAclass", "HVA")
-plotprop2("DTclass", "DT")
-
-#different arrangement
-ggplot(sims_summary2, aes(x=NoiseLevel2, y=LE_pp, fill=Classification)) +
-  facet_grid(TSlength~Classification) + 
-  geom_bar(stat = "identity", position = position_dodge2(), show.legend = F) + theme_bw() + xlabvert
-
-#LE across all models
-ggplot(sims_d, aes(x=NoiseLevel2, y=LEmin, color=Classification)) +
-  facet_grid(TSlength~., scales = "free_y") + geom_hline(yintercept = 0) +
-  geom_point(position = position_dodge(0.05), alpha=0.4) + 
-  theme_bw() + xlab("Noise Level") + legalpha
-#violin plots
-ggplot(sims_d, aes(x=factor(NoiseLevel2), y=LEmin, fill=Classification)) +
-  facet_grid(TSlength~., scales = "free_y") + geom_hline(yintercept = 0) +
-  geom_violin(position = position_dodge(0.9), scale = "width") + 
-  theme_bw() + xlab("Noise Level")
-
-#LE for individual models
-ggplot(sims_d, aes(x=Model, y=LEmin, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel2, scales = "free_y") + geom_hline(yintercept = 0) +
-  geom_point(position = position_dodge(0.02), alpha=0.3) + theme_bw() + xlabvert
-
-#R squared, E, theta for individual models
-ggplot(sims_d, aes(x=Model, y=R2best, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel2, scales = "free_y") + geom_hline(yintercept = 0) +
-  geom_point(position = position_dodge(0.02), alpha=0.3) + theme_bw() + xlabvert + legalpha + ylab("R-squared")
-ggplot(sims_d, aes(x=Model, y=Ebest, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel2) + geom_hline(yintercept = 0) +
-  geom_point(position = position_dodge(0.02), alpha=0.3) + theme_bw() + xlabvert + legalpha
-ggplot(sims_d, aes(x=Model, y=taubest, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel2) + geom_hline(yintercept = 0) +
-  geom_point(position = position_dodge(0.02), alpha=0.3) + theme_bw() + xlabvert + legalpha
-ggplot(sims_d, aes(x=Model, y=thetabest, color=Classification)) +
-  facet_grid(TSlength~NoiseLevel2) + geom_hline(yintercept = 0) +
-  geom_point(position = position_dodge(0.02), alpha=0.3) + theme_bw() + xlabvert + legalpha
-#E vs tau
-ggplot(sims_d, aes(x=Ebest, y=taubest, size=TSlength, color=NoiseLevel2)) +
-  facet_wrap(Model~., nrow = 3, scales = "free_y") + geom_hline(yintercept = 1) +
-  geom_point(alpha=0.5) + #geom_boxplot() + 
-  theme_bw() 
-
-#histograms of LE distributions all model
-tslengths=unique(sims_d$TSlength)
-for(i in 1:length(tslengths)) {
-  print(ggplot(filter(sims_d, TSlength==tslengths[i]), aes(x=LEmin, fill=Classification)) +
-          facet_grid(Classification~NoiseLevel2, scales = "free_y") + geom_hline(yintercept = 0) +
-          geom_histogram(boundary = 0.01, binwidth = 0.1, show.legend = F) + geom_vline(xintercept = 0) +
-          theme_bw() + ggtitle(paste("TSlength =", tslengths[i])) + xlim(c(-1,1)))
-}
-
