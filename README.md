@@ -49,5 +49,5 @@ Name | Description
 `gpdd_Etau_smap.csv` | E and tau values for GPDD time series.
 `gpdd_results_smap.csv` | JLE results for GPDD time series.
 `gpdd_results_truncation_smap.csv` | JLE results for GPDD time series (truncated chaotic series).
-`gpdd_othermethods.csv` | RQA and PE results for GPDD time series.
+`gpdd_results_othermethods.csv` | RQA and PE results for GPDD time series.
 `AndersonGilloolyLEdata.csv` | Empirical LE data from Anderson and Gillooly 2020.
