@@ -1,30 +1,28 @@
-# Data processing for GPDD stability analysis
+# Processes, filters, and cleans GPDD data
+# Tanya Rogers
 
 library("rgpdd")
-library("ggplot2")
 library("dplyr")
 library("tidyr")
-library("rEDM")
 library("purrr")
 
-# Prior studies ####
+#Filtering used by prior studies
 
 #Sibly et al 2007 (634)
 #graded 2-5, at least 10 obs, some regression constraints
 
 #Knape and Valpine 2012 MainID (627)
 #"removing harvest and nonindex based data, data sampled at non-annual intervals 
-# and time series taking less than 15 unique values" #no length constraint, median 23.
+#and time series taking less than 15 unique values" #no length constraint, median 23.
 
 #Clark Luis 2019 (640)
 #graded 3 or higher, at least 30 obs, taxonomic constraints, constraints on repeating zeros
 #at least 5 unique values
 
-# Processing ####
-#life history info (includes just 180 focal series)
+#load life history info (includes just focal series)
 gpdd_lifehistory=read.csv("data/gpdd_lifehistory.csv")
 
-#function for longest run of zeros
+#function to get longest run of zeros
 zero_run <- function(x){
   k<-rle(x$PopulationUntransformed)
   if(is.element(0, k$values)){
@@ -108,7 +106,7 @@ sampling_interval=function(unTimePeriodID, data) {
 }
 gpdd_d_nest$SamplingInterval=map2_chr(gpdd_d_nest$unTimePeriodID, gpdd_d_nest$data, sampling_interval) 
 
-#function for timescale ratios
+#function to compute timescale ratios
 timescale_ratio=function(SamplingInterval, num, den_mo) {
   ifelse(SamplingInterval=="annual", num/(den_mo/12),
          ifelse(SamplingInterval=="seasonal", num/(den_mo/6),
@@ -119,27 +117,27 @@ timescale_ratio=function(SamplingInterval, num, den_mo) {
   
 }
 
-#identify taxon classes, all others are zooplankton
+#identify taxon classes, all others are categorized as zooplankton
 focal_taxa=c("Aves","Osteichthyes", "Mammalia", "Bacillariophyceae", "Dinophyceae", "Insecta")
 
 #PRIMARY NESTED TABLE
 gpdd_d <- gpdd_filter %>%
   #join nested data, location info, life history info to filtered main table
   left_join(gpdd_d_nest,by="MainID") %>% 
-  left_join(select(gpdd_lifehistory, MainID, Biome, Temp_C, Mass_g:TrL),by="MainID") %>% 
+  left_join(select(gpdd_lifehistory, MainID, Biome, Mass_g:TrL),by="MainID") %>% 
   left_join(select(gpdd_location, LocationID, ExactName, Country, Continent, LongDD, LatDD),by="LocationID") %>% 
   #relabel taxon classes
   #compute timescale metrics
   mutate(TaxonomicClass2=ifelse(TaxonomicClass %in% focal_taxa, as.character(TaxonomicClass), "Zooplankton"),
          TaxonomicClass3=recode(TaxonomicClass2,Aves="Birds",Osteichthyes="Bony fishes",Mammalia="Mammals",Bacillariophyceae="Phytoplankton",Dinophyceae="Phytoplankton",Insecta="Insects"),
-         timescale_MinAge=timescale_ratio(SamplingInterval, datasetlength, MinAge_mo),
-         timescale_Lifespan=timescale_ratio(SamplingInterval, datasetlength, Lifespan_mo),
-         timestep_MinAge=timescale_ratio(SamplingInterval, 1, MinAge_mo),
-         timestep_Lifespan=timescale_ratio(SamplingInterval, 1, Lifespan_mo)) %>% 
+         timescale_MinAge=timescale_ratio(SamplingInterval, datasetlength, MinAge_mo), #generations sampled
+         timescale_Lifespan=timescale_ratio(SamplingInterval, datasetlength, Lifespan_mo), #lifespans sampled
+         timestep_MinAge=timescale_ratio(SamplingInterval, 1, MinAge_mo), #generations per timestep
+         timestep_Lifespan=timescale_ratio(SamplingInterval, 1, Lifespan_mo)) %>% #lifespans per timestep
   #subset/reorder columns
   select(MainID:LocationID, TaxonName, CommonName, Reliability, SamplingInterval, 
          datasetlength:propmissing, TaxonomicPhylum:TaxonomicGenus, TaxonomicClass2, TaxonomicClass3, 
-         TaxonomicLevel, Mass_g:TrL, timescale_MinAge:timestep_Lifespan, ExactName:LatDD, Biome, Temp_C, SamplingUnits, SourceTransform, Notes=Notes.x,
+         TaxonomicLevel, Mass_g:TrL, timescale_MinAge:timestep_Lifespan, ExactName:LatDD, Biome, SamplingUnits, SourceTransform, Notes=Notes.x,
          data) %>% 
   #remove daily dataset
   filter(SamplingInterval!="daily") %>% 
@@ -184,32 +182,28 @@ gpdd_d$data_rescale=map(gpdd_d$data_fill, rescale)
 gpdd_d$data_rescale_case=map_dbl(gpdd_d$data_fill, rescale, diag=T)
 #table(gpdd_d$data_rescalediag)
 
-#sqrt transform
-sqrtrescale=function(data) {
-  data$PopSqrt=sqrt(data$PopulationUntransformed)/sd(sqrt(data$PopulationUntransformed), na.rm=T)
-  data$Pop=data$PopulationUntransformed/sd(data$PopulationUntransformed, na.rm=T)
-  return(as.data.frame(data))
-}
-gpdd_d$data_sqrt=map(gpdd_d$data_fill, sqrtrescale)
-
-#test for monotonic trends
+#quantify monotonic trend
 monotonic_eval=function(data) {
   (cor(data$SeriesStep, data$PopRescale, use="p", method="spearman"))^2
 }
 gpdd_d$monotonicR2=map_dbl(gpdd_d$data_rescale, monotonic_eval)
-#gpdd_d$monotonic=ifelse(gpdd_d$monotonicR2>0.5,"yes","no")
 
 #unnest table
 gpdd_dun = unnest(select(gpdd_d, MainID, CommonName, data_rescale))
 
-#files for export
+#export files
 write.csv(gpdd_dun, "./data/gpdd_timeseries.csv", row.names = F)
 write.csv(select(gpdd_d, MainID:Notes, data_rescale_case, monotonicR2), "./data/gpdd_ts_metadata.csv", row.names = F)
 
-#save nested table for analysis
-save(gpdd_d, file = "./data/gpdd_d.Rdata")
+# #save nested table
+# save(gpdd_d, file = "./data/gpdd_d.Rdata")
 
-# #update life history 
-# gpdd_lh <- gpdd_lifehistory %>% 
-#   filter(MainID %in% unique(gpdd_filter$MainID))
-# write.csv(gpdd_lh, "./data/gpdd_lifehistory.csv", row.names = F)
+# #plot a time series
+# plotMainID=function(ID) {
+#   testplot=filter(gpdd_d, MainID==ID)
+#   plot(testplot$data_rescale[[1]]$SeriesStep, testplot$data_rescale[[1]]$PopRescale, 
+#        ylab="PopRescale", xlab="SeriesStep", main=paste(ID, testplot$CommonName))
+#   lines(testplot$data_rescale[[1]]$SeriesStep, testplot$data_rescale[[1]]$PopRescale)
+# }
+# plotMainID(9953)
+# plotMainID(56)
