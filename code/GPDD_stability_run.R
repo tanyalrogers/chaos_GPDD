@@ -1,4 +1,4 @@
-# Applies LE chaos detection methods to GPDD
+# Applies Jacobian LE chaos detection methods to GPDD
 # Includes selection of E and tau used by RQA
 # Tanya Rogers
 
@@ -54,21 +54,15 @@ gpdd_d$minmean=map_dbl(gpdd_results$JLE, ~.x$minmean) #LE mean
 gpdd_d$minci=map_dbl(gpdd_results$JLE, ~.x$minci) #LE lower confidence bound (*this is the LE estimate to use!*)
 gpdd_d$mincisign=ifelse(gpdd_d$minci>0.01, "chaotic", "not chaotic")
 length(which(gpdd_d$minci>0.01))/length(which(!is.na(gpdd_d$minci)))
-
-#this function computes other stability metrics not used in paper
-gpdd_results$otherLE=map2(gpdd_results$modelresultsbest, gpdd_results$jacobians, getStability)
-gpdd_d$gle=map_dbl(gpdd_results$otherLE, ~.x$gle) #LE computed from whole time series 
-gpdd_d$lle_pp=map_dbl(gpdd_results$otherLE, ~.x$lle_pp) #proportion of local LEs that are positive
+#convert LE estimate to common timescale
+gpdd_d$minci_mo=gpdd_d$minci/timescale_mo(gpdd_d$SamplingInterval, 1)
+gpdd_d$minci_gen=gpdd_d$minci_mo*gpdd_d$MinAge_mo
 
 #predictability of time series (abundance, growth rate, both, neither)
 predthreshold=0.2
 gpdd_d$predictable_ag=ifelse(gpdd_d$bestR2>predthreshold & gpdd_d$bestR2m>predthreshold, "ag",
                               ifelse(gpdd_d$bestR2>predthreshold & gpdd_d$bestR2m<=predthreshold, "a",
                                      ifelse(gpdd_d$bestR2<=predthreshold & gpdd_d$bestR2m>predthreshold, "g", "none")))
-
-#convert LE estimate to common timescale
-gpdd_d$minci_mo=gpdd_d$minci/timescale_mo(gpdd_d$SamplingInterval, 1)
-gpdd_d$minci_gen=gpdd_d$minci_mo*gpdd_d$MinAge_mo
 
 #fix E to 1 for best model, recompute LE ####
 gpdd_results$LE1d=map2(gpdd_d$data_rescale, gpdd_d$bestmodel+2, LE1d, y="PopRescale")
@@ -77,7 +71,7 @@ gpdd_d$mincisign1d=ifelse(gpdd_d$minci1d>0.01, "chaotic", "not chaotic")
 length(which(gpdd_d$minci1d>0.01))/length(which(!is.na(gpdd_d$minci1d)))
 
 #shorten time series, recompute LE ####
-gpdd1=select(gpdd_d, MainID:Notes, monotonicR2, data_rescale, bestmodel:minci_gen) %>% 
+gpdd1=select(gpdd_d, MainID:Notes, monotonicR2, data_rescale, bestmodel:predictable_ag) %>% 
   mutate(tslengthcat="full") %>% filter(mincisign=="chaotic")
 gpdd2=gpdd1 %>% 
   mutate(datasetlength=ifelse(datasetlength==30,NA,ifelse(datasetlength/2<=30,30,ceiling(datasetlength/2))),
@@ -125,28 +119,16 @@ gpdd_short_results$JLE=map2(gpdd_short_results$modelresultsbest, gpdd_short_resu
 gpdd_short$minci=map_dbl(gpdd_short_results$JLE, ~.x$minci)
 gpdd_short$minmean=map_dbl(gpdd_short_results$JLE, ~.x$minmean)
 gpdd_short$mincisign=ifelse(gpdd_short$minci>0.01, "chaotic", "not chaotic")
-
-gpdd_short_results$otherLE=map2(gpdd_short_results$modelresultsbest, gpdd_short_results$jacobians, getStability)
-gpdd_short$gle=map_dbl(gpdd_short_results$otherLE, ~.x$gle)
-gpdd_short$lle_pp=map_dbl(gpdd_short_results$otherLE, ~.x$lle_pp)
+#convert to common timescale
+gpdd_short$minci_mo=gpdd_short$minci/timescale_mo(gpdd_short$SamplingInterval, 1)
+gpdd_short$minci_gen=gpdd_short$minci_mo*gpdd_short$MinAge_mo
 
 #predictability
 gpdd_short$predictable_ag=ifelse(gpdd_short$bestR2>predthreshold & gpdd_short$bestR2m>predthreshold, "ag",
                              ifelse(gpdd_short$bestR2>predthreshold & gpdd_short$bestR2m<=predthreshold, "a",
                                     ifelse(gpdd_short$bestR2<=predthreshold & gpdd_short$bestR2m>predthreshold, "g", "none")))
 
-#convert to common timescale
-gpdd_short$minci_mo=gpdd_short$minci/timescale_mo(gpdd_short$SamplingInterval, 1)
-gpdd_short$minci_gen=gpdd_short$minci_mo*gpdd_short$MinAge_mo
-
 gpdd_combo=rbind(gpdd1,gpdd_short)
-
-#### Direct LE Method ####
-
-gpdd_results$regLE=map2(gpdd_d$data_rescale, gpdd_results$modelresultsbest, regLE, y="PopRescale")
-gpdd_d$LEreg=map_dbl(gpdd_results$regLE, ~.x$LEreg)
-gpdd_d$LEreg_se=map_dbl(gpdd_results$regLE, ~.x$LEreg_se)
-gpdd_d$LEregmin=gpdd_d$LEreg-1.96*gpdd_d$LEreg_se
 
 #### Export Results ####
 
@@ -161,7 +143,7 @@ write.csv(exportEtau, "./data/gpdd_Etau_smap.csv", row.names = F)
 #change names of some variables, so more intuitive
 exportres=select(gpdd_d, MainID, R2abund=bestR2, R2gr=bestR2m, predictable_ag, modelform, E, tau, theta, 
                  LEmean=minmean, LEmin=minci, LEmin_mo=minci_mo, LEmin_gen=minci_gen, LEclass=mincisign, 
-                 LEmin1d=minci1d, LEclass1d=mincisign1d, LLE_proppos=lle_pp, LEreg, LEreg_se, LEregmin)
+                 LEmin1d=minci1d, LEclass1d=mincisign1d)
 write.csv(exportres, "./data/gpdd_results_smap.csv", row.names = F)
 #export results with shortened time series
 exportres2=select(gpdd_combo, MainID, datasetlength, tslengthcat, timescale_MinAge, MinAge_mo, Mass_g, R2abund=bestR2, R2gr=bestR2m, predictable_ag, E, tau, theta, 

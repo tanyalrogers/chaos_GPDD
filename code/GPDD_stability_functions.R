@@ -2,6 +2,7 @@
 # - select the best E, tau, and theta
 # - get Lyaponov exponents (LEs) using the Jacobian method (B2 in paper)
 # - get LEs using the direct method (B1 in paper)
+# Tanya Rogers
 
 #### Jacobian LE Method (B2) ####
 
@@ -423,160 +424,12 @@ LEshift=function(
   return(list(LEseg=LEseg, minmean=minmean, minci=minci))
 }
 
-#This computes local and global LEs
-#The global LE is calculated for the whole time series. In simulations this was found to be less accurate
-# than the method in LEshift
-getStability=function(modelresults, jacobians) {
-  tau=modelresults$modelstats$tau
-  
-  len=dim(jacobians)[3]
-  ndim=dim(jacobians)[1]
-  
-  if(ndim==1) {
-    lle=log(abs(jacobians[1,1,]))/tau
-  } else {
-    lle=numeric(length = len)
-    for(i in 1:len) {
-      Jac=jacobians[,,i]
-      if(any(is.na(Jac))) {
-        lle[i]=NA
-      } else {
-        lle[i]=log(max(abs(eigen(Jac, only.values = T)$values)))/tau
-      }
-    }
-  }
-  
-  #proportion positive
-  lle_pp=length(which(lle>0))/length(which(!is.na(lle)))
-  
-  #naive avg of local LEs
-  lle_avg=mean(lle, na.rm=T)
-  
-  #global le
-  runlen=rle(!is.na(jacobians[1,1,]))
-  serlen=max(runlen$lengths[runlen$values==TRUE])
-  if(serlen<(len/2.5) & serlen<25) {
-    #do not compute if the longest run of non-missing values is less than 40% of ts length or less than 25
-    gle=NA 
-  } else {
-    if(ndim==1) {
-      #average over all timepoints
-      gle=mean(log(abs(jacobians[1,1,])), na.rm=T)/tau
-    } else {
-      #compute over longest run of non-missing values
-      starti=sum(runlen$lengths[1:(which.max(runlen$lengths)-1)])+1
-      endi=sum(runlen$lengths[1:(which.max(runlen$lengths))])
-      LEtemp=numeric(tau)
-      for(i in 1:tau){
-        indices=seq(from=starti+i-1, to=endi, by=tau)
-        Jacs=jacobians[,,indices]
-        nk=dim(Jacs)[3]
-        Jk=Jacs[,,1]
-        QR=qr(Jk)
-        R=qr.R(QR)
-        Q=qr.Q(QR)
-        Rcum=R
-        for(k in 2:nk) {
-          Jk=Jacs[,,k]
-          QR=qr(Jk%*%Q)
-          R=qr.R(QR)
-          Q=qr.Q(QR)
-          Rcum=R%*%Rcum
-        }
-        LEtemp[i]=1/nk*log(max(abs(diag(Rcum))))/tau
-      }
-      gle=mean(LEtemp)
-    }
-  }
-  
-  return(list(lle=lle, lle_pp=lle_pp, lle_avg=lle_avg, gle=gle))
-}
-
 #Get LE from particular model with E fixed to 1
 LE1d=function(data, model, taufix=NULL, y) {
   modelresults=smap_model_options(data=data, y=y, model=model, Efix=1, taufix=taufix)
   jacobians=getJacobians(modelresults)
   JLE=LEshift(modelresults, jacobians)
   return(list(modelresults=modelresults, jacobians=jacobians, JLE=JLE))
-}
-
-#A variant of LEshift, computes LE and its variability for all possible segment lengths
-#not used in paper, but may be useful for diagnostics
-LEsaturation=function(modelresults, jacobians, samplinginterval="monthly") {
-  tau=modelresults$modelstats$tau
-  
-  len=dim(jacobians)[3]
-  ndim=dim(jacobians)[1]
-  
-  #remove leading NAs
-  if(ndim==1) {
-    jacobians2=jacobians[(ndim*tau+1):len]
-    runlen=rle(!is.na(jacobians2))
-    len2=length(jacobians2)
-  } else {
-    jacobians2=jacobians[,,(ndim*tau+1):len]
-    runlen=rle(!is.na(jacobians2[1,1,]))
-    len2=dim(jacobians2)[3]
-  }
-  
-  serlen=max(runlen$lengths[runlen$values==TRUE])
-
-  #Tminus=3:6
-  Tminus=3:(serlen-2*tau)
-  LEseg=data.frame(SegLen=(serlen-max(Tminus)):(serlen-min(Tminus)), le_mean=NA, le_sd=NA, le_ci=NA, le_n=NA, le_var=NA) %>% 
-    filter(SegLen>0)
-  
-  for(i in 1:nrow(LEseg)) {
-    SegLen=LEseg$SegLen[i]
-    LEtemp=numeric(len2-SegLen+1)
-    for(j in 1:length(LEtemp)) {
-      if(ndim==1) {
-        Jacs1=jacobians2[j:(j+SegLen-1)]
-      } else {
-        Jacs1=jacobians2[,,j:(j+SegLen-1)]
-      }
-      if(any(is.na(Jacs1))) {
-        LEtemp2=NA
-      } else {
-        LEtemp2=numeric(tau)
-        for(a in 1:tau) {
-          indices=seq(from=a, to=ifelse(ndim==1,length(Jacs1),dim(Jacs1)[3]), by=tau)
-          if(ndim==1) {
-            Jacs=Jacs1[indices]
-            LEtemp2[a]=mean(log(abs(Jacs)), na.rm=T)/tau
-          } else {
-            Jacs=Jacs1[,,indices]
-            nk=dim(Jacs)[3]
-            Jk=Jacs[,,1]
-            QR=qr(Jk)
-            R=qr.R(QR)
-            Q=qr.Q(QR)
-            Rcum=R
-            for(k in 2:nk) {
-              Jk=Jacs[,,k]
-              QR=qr(Jk%*%Q)
-              R=qr.R(QR)
-              Q=qr.Q(QR)
-              Rcum=R%*%Rcum
-            }
-          LEtemp2[a]=1/nk*log(max(abs(diag(Rcum))))/tau
-          }
-        }
-      }
-      LEtemp[j]=mean(LEtemp2, na.rm=F)/timescale_mo(samplinginterval, 1) #if tau>1, will result in more than i+1 segments being averaged unless you set na.rm=F
-    }
-    LEseg$le_n[i]=length(which(!is.na(LEtemp)))
-    LEseg$le_mean[i]=mean(LEtemp, na.rm=T)
-    LEseg$le_sd[i]=sd(LEtemp, na.rm=T)
-    LEseg$le_ci[i]=LEseg$le_sd[i]/sqrt(LEseg$le_n[i])*qt(p=0.95, df=LEseg$le_n[i]-1)
-    LEseg$le_var[i]=var(LEtemp, na.rm=T)
-  }
-  
-  m1=lm(log(le_var)~log(SegLen), data=LEseg)
-  logerror=coefficients(m1)[1]
-  slope=coefficients(m1)[2]
-  
-  return(list(LEseg=LEseg, logerror=logerror, slope=slope))
 }
 
 #### Direct LE Method (B1) ####

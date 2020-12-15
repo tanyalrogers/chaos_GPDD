@@ -2,7 +2,9 @@
 .Rhistory
 *.RData
 .Ruserdata
+.DS_Store
 /figures
+/archive
 /data/old not used
 /data/*classification*
 /code/Heatmap_figs.R
