@@ -20,7 +20,7 @@ gpdd_d=left_join(gpdd_d, gpdd_other, by="MainID")
 
 gpdd_d$LEclass01=ifelse(gpdd_d$LEclass=="chaotic",1,0)
 gpdd_d$RQA01=ifelse(gpdd_d$RQA=="chaotic",1,0)
-gpdd_d$PE01=ifelse(gpdd_d$PE3=="chaotic",1,0)
+gpdd_d$PE01=ifelse(gpdd_d$PE=="chaotic",1,0)
 
 #general stats ####
 #number of distinct taxa (138)
