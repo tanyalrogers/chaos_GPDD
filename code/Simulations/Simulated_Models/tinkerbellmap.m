@@ -38,5 +38,6 @@ end
 
 
 % Add lognormal noise
-x=(x'+1).*lognrnd(0,level*std(x),n,1);
+scale=0.15+0.65*exp(-std(x));
+x=(x'+1).*lognrnd(0,scale*level*std(x),n,1);
 y=y';

@@ -1,6 +1,9 @@
 function output = ChaosClassification_MethodsB3toB6(TimeSeries,E,tau)
-% This script gets chaos classifications using the methods from 
-% Supplementary Text B.3 - B.6
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% This script takes a time series and embedding parameters and returns
+% chaos classifications using the methods from 
+% Supplementary Text B.3 - B.6 (RQA, PE, HVA, CDT)
 %
 %%% INPUTS
 % TimeSeries - time series of population dynamics
@@ -12,15 +15,15 @@ function output = ChaosClassification_MethodsB3toB6(TimeSeries,E,tau)
 % PermutationClass - Classification of 'chaotic' or 'not chaotic' from permutation entropy
 % VisibilityClass - Classification of 'chaotic' or 'not chaotic' from the horizontal visibility algorithm
 % DecisionTreeClass - Classification of 'chaotic' or 'not chaotic' from the chaos decision tree
-% Optional outputs: 
+
+% Optional outputs: (uncomment lines 138-144 to return these) 
 % DET - determinism from RQA
 % L -  average length of diagonal line from RQA
 % ENT - entropy from RQA
 % PermutationEntropy - permutation entropy 
 % MSE - deviation from expected degree distribution from the horizontal visibility algorithm
 % VisibilityEntropy - entropy of the degree distribution from the horizontal visibility algorithm
-
-n=length(TimeSeries);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  
 %% RECURRENCE QUANTIFICATION ANALYSIS (Supplementary Text B.3)
 
@@ -56,6 +59,8 @@ PermutationEntropy=petropy(TimeSeries,wordLength,1);
 % Fast Horizontal Visibility Graph (HVG) for MATLAB file exchange (Iacobello, G., 2020)
 % The fast_HVG function can be found at: 
 % https://www.mathworks.com/matlabcentral/fileexchange/72889-fast-horizontal-visibility-graph-hvg-for-matlab
+
+n=length(TimeSeries);
 
 % Call fast horizontal visibility graph with default shift value
 VisGraph=fast_HVG(TimeSeries,(1:n)',0);
