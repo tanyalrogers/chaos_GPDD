@@ -21,14 +21,15 @@ Directory | Name | Description
 -------- | ------- | -------
 Methods | `LE_ChaosDetectionMethods.R` | Functions for E and tau selection, JLE, and DLE.
 Methods | `ChaosClassification_MethodsB3toB6.m` | Function applying RQA, PE, HVG, and CDT methods. Code for individual methods are included in subdirectories.
-Simulations | `Generate_simulations.m` **Needs to be added** | Generates simulated time series. Code for individual models are included in subdirectories. Note: Output will vary depending on random seed.
+Simulations | `Simulated_Models/` | Contains code for individual models used in simulations. See Supplementary Materials in the paper for more detail and the parameter values we used. Note that exact outputs will vary depending on the random seed. The simulated datasets we used in the paper are provided in the `data` folder. 
+Simulations | `ChaosClassification_Example.m` | Simple example of how to generate a simulation and apply RQA, PE, HVG, and CDT methods.
 Simulations | `Simulation_run.R` | Applies JLE and DLE to simulated datasets. Also obtains E and tau for use in other analyses. Note: This file takes >24 hours to run in full.
-Simulations | `Simulation_run_MethodsB3toB6.m` **Needs to be added, replace current file** | Applies RQA, RE, HVG, and CDT methods to simulated data. Note: This file takes >10 hours to run in full.
+Simulations | `Simulation_run_MethodsB3toB6.m` | Applies RQA, RE, HVG, and CDT methods to simulated data. Note: This file takes >10 hours to run in full.
 Simulations | `Simulation_plot.R` | Loads simulation results and generates plots.
 Simulations | `ggplot_themes_rogers.R` | Custom ggplot themes for plotting.
 GPDD | `GPDD_stability_dataprocessing.R` | Obtains and filters GPDD time series from package rgpdd and merges with information in `gpdd_lifehistory.csv`.
 GPDD | `GPDD_stability_run.R` | Applies JLE to GPDD data. Also obtains E and tau for use in other analyses. 
-GPDD | `GPDD_stability_run_RQA_PE.m` **Needs to be added** | Applies RQA and PE to GPDD data.
+GPDD | `GPDD_stability_run_RQA_PE.m` | Applies RQA and PE to GPDD data.
 GPDD | `GPDD_stability_plot.R` | Loads GPDD results and generates plots.
 
 ## Data files
