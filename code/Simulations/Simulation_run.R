@@ -224,7 +224,8 @@ tauexport=spread(select(sims_v, ID:SimNumber, taubest), SimNumber, taubest) %>%
 write.csv(Eexport,"./data/sims_validation_E.csv", row.names = F)
 write.csv(tauexport,"./data/sims_validation_tau.csv", row.names = F)
 
-vexport=select(sims_v, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, LEmean=minmean, LEmin=minci, LEreg, LEreg_se)
+vexport=select(sims_v, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, 
+               LEmean=minmean, LEmin=minci, LEreg, LEreg_se, NoiseLevel2:LEclass)
 write.csv(vexport,"./data/sims_validation_results.csv", row.names = F)
 
 #### Observation and process noise dataset with known dynamics ####
@@ -302,5 +303,6 @@ tauexport=spread(select(sims_n, ID:SimNumber, taubest), SimNumber, taubest) %>%
 write.csv(Eexport,"./data/sims_noise_E.csv", row.names = F)
 write.csv(tauexport,"./data/sims_noise_tau.csv", row.names = F)
 
-nexport=select(sims_n, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, LEmean=minmean, LEmin=minci, LEreg, LEreg_se)
+nexport=select(sims_n, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, 
+               LEmean=minmean, LEmin=minci, LEreg, LEreg_se, LEregmin:LEclass)
 write.csv(nexport,"./data/sims_noise_results.csv", row.names = F)
