@@ -9,7 +9,6 @@ library("furrr")
 library("ggplot2")
 
 source("./code/Methods/LE_ChaosDetectionMethods.R")
-source("./code/Simulations/ggplot_themes_rogers.R")
 
 #to run in parallel
 plan(multisession, workers = 4)
@@ -123,7 +122,7 @@ sims_d$Classification2=ifelse(sims_d$Classification=="chaotic", "chaotic", "not 
 sims_d$LEregmin=sims_d$LEreg-1.96*sims_d$LEreg_se
 sims_d$LEregclass=ifelse(sims_d$LEregmin>0.01, "chaotic", "not chaotic")
 #class LEs Jacobian method
-sims_d$LEclass=ifelse(sims_d$LEmin>0.01, "chaotic", "not chaotic")
+sims_d$LEclass=ifelse(sims_d$minci>0.01, "chaotic", "not chaotic")
 
 #export E and tau for other analyses
 Eexport=spread(select(sims_d, ID:SimNumber, Ebest), SimNumber, Ebest) %>% 
@@ -215,7 +214,7 @@ sims_v$Classification2=ifelse(sims_v$Classification=="chaotic", "chaotic", "not 
 sims_v$LEregmin=sims_v$LEreg-1.96*sims_v$LEreg_se
 sims_v$LEregclass=ifelse(sims_v$LEregmin>0.01, "chaotic", "not chaotic")
 #class LEs jacobian method
-sims_v$LEclass=ifelse(sims_v$LEmin>0.01, "chaotic", "not chaotic")
+sims_v$LEclass=ifelse(sims_v$minci>0.01, "chaotic", "not chaotic")
 
 #export E and tau for other analyses
 Eexport=spread(select(sims_v, ID:SimNumber, Ebest), SimNumber, Ebest) %>% 
@@ -225,5 +224,85 @@ tauexport=spread(select(sims_v, ID:SimNumber, taubest), SimNumber, taubest) %>%
 write.csv(Eexport,"./data/sims_validation_E.csv", row.names = F)
 write.csv(tauexport,"./data/sims_validation_tau.csv", row.names = F)
 
-vexport=select(sims_v, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, LEmean=minmean, LEmin=minci, LEreg, LEreg_se)
+vexport=select(sims_v, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, 
+               LEmean=minmean, LEmin=minci, LEreg, LEreg_se, NoiseLevel2:LEclass)
 write.csv(vexport,"./data/sims_validation_results.csv", row.names = F)
+
+#### Observation and process noise dataset with known dynamics ####
+
+sims=read.csv("./data/simulation_dataset_noise_test.csv")
+
+sims_n=select(sims, ID, Model, TimeStep, ObsNoise, ProcessNoise, TSlength=TimeSeriesLength, Classification, Sim.1:Sim.100) %>% 
+  gather(SimNumber, Value, Sim.1:Sim.100) %>% 
+  group_by(ID,Model,Classification,ObsNoise, ProcessNoise,TSlength,SimNumber) %>% nest() %>% 
+  mutate(data=map(data, as.data.frame)) %>% ungroup()
+modelorder=unique(arrange(sims_n, Classification, Model)$Model)
+sims_n$Model=factor(sims_n$Model, levels=modelorder)
+
+# Jacobian LE method
+
+#set up results df
+sims_nresults=select(sims_n, ID, SimNumber, Model)
+#get hyperparameters (this takes a long time)
+starttime=Sys.time()
+sims_nresults$hpar1=future_map(sims_n$data, besthyper, y="Value", ylog=F, pgr="none")
+endtime=Sys.time(); endtime-starttime
+starttime=Sys.time()
+sims_nresults$hpar4=future_map(sims_n$data, besthyper, y="Value", ylog=F, pgr="gr")
+sims_nresults$hpar5=future_map(sims_n$data, besthyper, y="Value", ylog=T, pgr="gr")
+endtime=Sys.time(); endtime-starttime
+#get model output
+sims_nresults$modelresults1=map2(sims_n$data, sims_nresults$hpar1, smap_model_options, y="Value", model=1)
+sims_nresults$modelresults4=map2(sims_n$data, sims_nresults$hpar4, smap_model_options, y="Value", model=4)
+sims_nresults$modelresults5=map2(sims_n$data, sims_nresults$hpar5, smap_model_options, y="Value", model=5)
+#get R2
+sims_n$R1a=map_dbl(sims_nresults$modelresults1, ~.x$modelstats$R2abund)
+sims_n$R4a=map_dbl(sims_nresults$modelresults4, ~.x$modelstats$R2abund)
+sims_n$R5a=map_dbl(sims_nresults$modelresults5, ~.x$modelstats$R2abund)
+
+sims_n$bestR2=select(sims_n,R1a,R4a,R5a) %>% apply(1,max)
+sims_n$bestmodel=select(sims_n,R1a,R4a,R5a) %>% apply(1,which.max)
+sims_nresults$bestmodel=select(sims_n,R1a,R4a,R5a) %>% apply(1,which.max)
+sims_nresults$modelresultsbest=cbind(select(sims_nresults, modelresults1, modelresults4, modelresults5),sims_n$bestmodel) %>% apply(1, function(x) {m=as.numeric(x["sims_n$bestmodel"]); x[m][[1]]})
+
+#get stability
+sims_nresults$jacobians=map(sims_nresults$modelresultsbest, getJacobians)
+sims_nresults$LEshift=map2(sims_nresults$modelresultsbest, sims_nresults$jacobians, LEshift)
+
+#pull results
+sims_n$Ebest=map_dbl(sims_nresults$modelresultsbest, ~.x$modelstats$E)
+sims_n$taubest=map_dbl(sims_nresults$modelresultsbest, ~.x$modelstats$tau)
+sims_n$thetabest=map_dbl(sims_nresults$modelresultsbest, ~.x$modelstats$theta)
+sims_n$R2best=map_dbl(sims_nresults$modelresultsbest, ~.x$modelstats$R2abund)
+sims_n$minmean=map_dbl(sims_nresults$LEshift, ~.x$minmean)
+sims_n$minci=map_dbl(sims_nresults$LEshift, ~.x$minci)
+
+# Direct LE method
+
+sims_nresults$regLE=map2(sims_n$data, sims_nresults$modelresultsbest, regLE, y="Value")
+sims_n$LEreg=map_dbl(sims_nresults$regLE, ~.x$LEreg)
+sims_n$LEreg_se=map_dbl(sims_nresults$regLE, ~.x$LEreg_se)
+
+save(sims_n, sims_nresults, file = "./data/sims_noise.Rdata")
+
+# Export results
+
+#get best model form
+sims_n$modelform=map_chr(sims_nresults$modelresultsbest, ~.x$form)
+#class LEs regression method
+sims_n$LEregmin=sims_n$LEreg-1.96*sims_n$LEreg_se
+sims_n$LEregclass=ifelse(sims_n$LEregmin>0.01, "chaotic", "not chaotic")
+#class LEs jacobian method
+sims_n$LEclass=ifelse(sims_n$minci>0.01, "chaotic", "not chaotic")
+
+#export E and tau for other analyses
+Eexport=spread(select(sims_n, ID:SimNumber, Ebest), SimNumber, Ebest) %>% 
+  select(ID:TSlength, paste0("Sim.",1:100))
+tauexport=spread(select(sims_n, ID:SimNumber, taubest), SimNumber, taubest) %>% 
+  select(ID:TSlength, paste0("Sim.",1:100))
+write.csv(Eexport,"./data/sims_noise_E.csv", row.names = F)
+write.csv(tauexport,"./data/sims_noise_tau.csv", row.names = F)
+
+nexport=select(sims_n, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, 
+               LEmean=minmean, LEmin=minci, LEreg, LEreg_se, LEregmin:LEclass)
+write.csv(nexport,"./data/sims_noise_results.csv", row.names = F)
