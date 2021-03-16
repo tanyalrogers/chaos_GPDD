@@ -1,10 +1,10 @@
 # Plots of simuation results
 # Tanya Rogers
 
-library("ggplot2")
-library("dplyr")
-library("tidyr")
-library("rEDM")
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(rEDM)
 library(cowplot)
 
 source("./code/Simulations/ggplot_themes_rogers.R")
@@ -12,21 +12,30 @@ source("./code/Simulations/ggplot_themes_rogers.R")
 #load data
 sims_d=read.csv("./data/sims_test_results.csv")
 sims_v=read.csv("./data/sims_validation_results.csv")
+sims_n=read.csv("./data/sims_noise_results.csv")
 sims_d2=read.csv("./data/sims_test_results_othermethods.csv")
 sims_v2=read.csv("./data/sims_validation_results_othermethods.csv")
+sims_n2=read.csv("./data/sims_noise_results_othermethods.csv")
 
 sims_d=left_join(sims_d, sims_d2)
 sims_v=left_join(sims_v, sims_v2)
+sims_n=left_join(sims_n, sims_n2)
+
+#specify dynamics of noise models
+sims_n=unite(sims_n,Model,Model,Classification, remove = F)
 
 #set model order
 modelorder=unique(arrange(sims_d, Classification, Model)$Model)
 sims_d$Model=factor(sims_d$Model, levels=modelorder)
 modelorderv=unique(arrange(sims_v, Classification, Model)$Model)
 sims_v$Model=factor(sims_v$Model, levels=modelorderv)
+modelordern=unique(arrange(sims_n, Classification, Model)$Model)
+sims_n$Model=factor(sims_n$Model, levels=modelordern)
 
 #convert to long format
 sims_long=gather(sims_d, Method, Methodclass, LEregclass:DTclass)
 sims_vlong=gather(sims_v, Method, Methodclass, LEregclass:DTclass)
+sims_nlong=gather(sims_n, Method, Methodclass, LEregclass:LEclass) #update
 
 #overall prop correct classification ####
 sims_long %>% #test
@@ -34,6 +43,10 @@ sims_long %>% #test
   complete(Method, nesting(Classification2, Methodclass), fill=list(n=0)) %>% 
   group_by(Method, Classification2) %>% mutate(proportion=n/sum(n)) %>% as.data.frame()
 sims_vlong %>% #validation
+  group_by(Method, Classification2, Methodclass) %>% summarize(n=n()) %>% ungroup() %>% 
+  complete(Method, nesting(Classification2, Methodclass), fill=list(n=0)) %>% 
+  group_by(Method, Classification2) %>% mutate(proportion=n/sum(n)) %>% as.data.frame()
+sims_nlong %>% #noise
   group_by(Method, Classification2, Methodclass) %>% summarize(n=n()) %>% ungroup() %>% 
   complete(Method, nesting(Classification2, Methodclass), fill=list(n=0)) %>% 
   group_by(Method, Classification2) %>% mutate(proportion=n/sum(n)) %>% as.data.frame()
@@ -186,3 +199,23 @@ ggplot(filter(summary2, Method2 %in% c("JLE", "RQA", "PE")), aes(x=factor(NoiseL
                                 axis.text.y = element_text(size=8, color=c(rep(c("black","royalblue","seagreen"), each=3),"seagreen")),
                                 panel.spacing.x = unit(0.2,"lines")) 
 ggsave("./figures/SimResultsIndivModels_validation.png", width = 7, height = 6)
+
+#Observation and process noise dataset ####
+
+#proportion correct classifications, individual models, top 3 methods
+summary2=sims_nlong %>% 
+  group_by(Method,Classification,ObsNoise,ProcessNoise, Model) %>% 
+  summarize(proportion=length(which(Methodclass=="chaotic"))/length(Methodclass)) %>% 
+  mutate(Method2=sub("class","", Method),
+         Method2=recode(Method2, LE="JLE", LEreg="DLE", DT="CDT", HVA="HVG"),
+         Method2=factor(Method2, levels=c("DLE", "JLE","RQA","PE","HVG","CDT")))
+ggplot(filter(summary2, Method2 %in% c("JLE", "RQA", "PE")), aes(x=factor(ObsNoise), y=Model, fill=proportion)) +
+  facet_grid(Method2~ProcessNoise) + geom_tile(stat = "identity") + 
+  geom_hline(yintercept = c(3.5,6.5), color="white") +
+  #geom_text(aes(label=round(proportion,2)), color="white", size=3) +
+  classic + scale_x_discrete(expand = c(0,0)) + scale_y_discrete(expand = c(0,0)) +
+  labs(y="Model", x="Observation Noise Level", fill="Proportion Classified Chaotic", title = "Process Noise Level") +
+  removefacetbackground + theme(plot.title = element_text(hjust = 0.5, size=11), strip.text = element_text(size=10), legend.position = "bottom",
+                                axis.text.y = element_text(size=8, color=c(rep(c("black","royalblue"), each=3))),
+                                panel.spacing.x = unit(0.2,"lines")) 
+ggsave("./figures/SimResultsIndivModels_noise.png", width = 7, height = 6)

@@ -1,12 +1,12 @@
 # Applies Jacobian and Direct LE chaos detection methods to simulated data
 # Tanya Rogers
 
-library("dplyr")
-library("tidyr")
-library("rEDM")
-library("purrr")
-library("furrr")
-library("ggplot2")
+library(dplyr)
+library(tidyr)
+library(rEDM)
+library(purrr)
+library(furrr)
+library(ggplot2)
 
 source("./code/Methods/LE_ChaosDetectionMethods.R")
 
@@ -289,6 +289,7 @@ save(sims_n, sims_nresults, file = "./data/sims_noise.Rdata")
 
 #get best model form
 sims_n$modelform=map_chr(sims_nresults$modelresultsbest, ~.x$form)
+sims_n$Classification2=ifelse(sims_n$Classification=="chaotic", "chaotic", "not chaotic")
 #class LEs regression method
 sims_n$LEregmin=sims_n$LEreg-1.96*sims_n$LEreg_se
 sims_n$LEregclass=ifelse(sims_n$LEregmin>0.01, "chaotic", "not chaotic")
@@ -304,5 +305,5 @@ write.csv(Eexport,"./data/sims_noise_E.csv", row.names = F)
 write.csv(tauexport,"./data/sims_noise_tau.csv", row.names = F)
 
 nexport=select(sims_n, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R2best, modelform, 
-               LEmean=minmean, LEmin=minci, LEreg, LEreg_se, LEregmin:LEclass)
+               LEmean=minmean, LEmin=minci, LEreg, LEreg_se, Classification2, LEregmin:LEclass)
 write.csv(nexport,"./data/sims_noise_results.csv", row.names = F)
