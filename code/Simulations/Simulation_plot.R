@@ -35,7 +35,7 @@ sims_n$Model=factor(sims_n$Model, levels=modelordern)
 #convert to long format
 sims_long=gather(sims_d, Method, Methodclass, LEregclass:DTclass)
 sims_vlong=gather(sims_v, Method, Methodclass, LEregclass:DTclass)
-sims_nlong=gather(sims_n, Method, Methodclass, LEregclass:LEclass) #update
+sims_nlong=gather(sims_n, Method, Methodclass, LEregclass:DTclass)
 
 #overall prop correct classification ####
 sims_long %>% #test
@@ -211,11 +211,11 @@ summary2=sims_nlong %>%
          Method2=factor(Method2, levels=c("DLE", "JLE","RQA","PE","HVG","CDT")))
 ggplot(filter(summary2, Method2 %in% c("JLE", "RQA", "PE")), aes(x=factor(ObsNoise), y=Model, fill=proportion)) +
   facet_grid(Method2~ProcessNoise) + geom_tile(stat = "identity") + 
-  geom_hline(yintercept = c(3.5,6.5), color="white") +
+  geom_hline(yintercept = 3.5, color="white") +
   #geom_text(aes(label=round(proportion,2)), color="white", size=3) +
   classic + scale_x_discrete(expand = c(0,0)) + scale_y_discrete(expand = c(0,0)) +
   labs(y="Model", x="Observation Noise Level", fill="Proportion Classified Chaotic", title = "Process Noise Level") +
   removefacetbackground + theme(plot.title = element_text(hjust = 0.5, size=11), strip.text = element_text(size=10), legend.position = "bottom",
                                 axis.text.y = element_text(size=8, color=c(rep(c("black","royalblue"), each=3))),
                                 panel.spacing.x = unit(0.2,"lines")) 
-ggsave("./figures/SimResultsIndivModels_noise.png", width = 7, height = 6)
+ggsave("./figures/SimResultsIndivModels_noise.png", width = 7, height = 5)
