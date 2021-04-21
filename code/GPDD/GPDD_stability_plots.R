@@ -76,23 +76,46 @@ plot_grid(etau, legend, rel_widths = c(3, 0.7))
 ggsave("./figures/Etaudist.png", width = 8, height = 3.5)
 
 #positive le vs mass #####
+
 #comparison to Anderson and Gilooly 2020 (positive values only)
 agle=read.csv("./data/AndersonGilloolyLEdata.csv", stringsAsFactors = F)
 tglevels=c("Birds","Bony fishes", "Insects", "Mammals", "Phytoplankton","Zooplankton","Marine inverts", "Microbes")
 agle$Tax4=factor(agle$TaxonomicClass3, levels = tglevels)
 gpdd_d$Tax4=factor(gpdd_d$TaxonomicClass3, levels = tglevels)
 
-lemass1=ggplot(filter(gpdd_d, LEmin_mo>0), aes(y=log10(LEmin_mo), x=log10(Mass_g))) + 
+#supplemental lake time series
+lakes=read.csv("./data/lakes_ts_metadata.csv",stringsAsFactors = F)
+lakes2=read.csv("./data/lakes_results_smap.csv",stringsAsFactors = F)
+lakes=lakes %>% filter(JLEsign=="chaotic") %>% left_join(lakes2)
+lakes$Tax4=factor(lakes$TaxonomicClass3, levels = tglevels)
+
+gpdd_pos=filter(gpdd_d, LEmin_mo>0) %>% select(Tax4,LE=LEmin_mo,Mass_g) %>% mutate(Origin="field", Source="GPDD")
+agle_pos=select(agle, Tax4, LE=LE_mo,Mass_g,Origin) %>% mutate(Source="AG2020")
+lakes_pos=select(lakes, Tax4, LE=JLE,Mass_g) %>% mutate(Origin="field",Source="Lakes")
+posLE=rbind(gpdd_pos, agle_pos,lakes_pos) 
+posLE2=rbind(gpdd_pos, agle_pos) 
+
+lemass2=ggplot(posLE, aes(y=log10(LE), x=log10(Mass_g))) + 
   ylab(expression(~log[10]~LE~(month^-1))) + xlab(expression(~log[10]~Mass~(g))) +
-  geom_smooth(method="lm", se = F, color="black") +
-  geom_smooth(data=agle, aes(y=log10(LE_mo)), method="lm", se = F, color="black", lty=2) +
-  geom_point(aes(fill=Tax4, shape="GPDD"), color="black", alpha=0.9, stroke=0.5, size=3.5, show.legend = F) + 
-  geom_point(data=agle, aes(y=log10(LE_mo), fill=Tax4, shape="AG2020"), stroke=0.5, size=2) +
+  geom_smooth(data=posLE2, method="lm", se = F, color="black") +
+  geom_point(aes(shape=Source,size=Source,fill=Tax4), color="black", alpha=0.9, stroke=0.5) + 
+  # geom_point(data=agle, aes(y=log10(LE_mo), fill=Tax4, shape="AG2020"), stroke=0.5, size=2) +
+  # geom_point(data=lakes, aes(y=log10(JLE), fill=Tax4, shape="Lakes"), stroke=0.5, size=3) +
   classic + labs(fill="Taxonomic\nGroup", shape="Source") + scale_fill_brewer(palette = "Dark2", drop=F) +
-  scale_shape_manual(values = c(24,21)) + guides(fill = guide_legend(override.aes = list(size = 3.5, shape=21)),
-                                                 shape = guide_legend(override.aes = list(size = c(2,3.5)))) +
+  scale_shape_manual(values = c(24,21,22)) + scale_size_manual(values = c(2,3.5,3)) +
+  guides(fill = guide_legend(override.aes = list(size = 3.5, shape=21))) +
+        # shape = guide_legend(override.aes = list(size = c(2,3.5,3)))) +
   theme(axis.title = element_text(size=12), axis.text = element_text(size=10))
-ggsave("./figures/mass_scaling.png", lemass1, width = 5.25, height = 4)
+ggsave("./figures/mass_scaling2.png", lemass2, width = 5.25, height = 4)
+
+#scaling exponent
+summary(lm(log10(LE)~log10(Mass_g),data=posLE2))
+
+t1<-lm(log10(LE)~log10(Mass_g),data=gpdd_pos)
+t2<-lm(log10(LE)~log10(Mass_g)+Tax4,data=gpdd_pos)
+t3<-lm(log10(LE)~log10(Mass_g)*Tax4,data=gpdd_pos)
+lmtest::lrtest(t1,t2)
+lmtest::lrtest(t1,t3)
 
 #classification and LE vs gen time, E ####
 classgtE=ggplot(gpdd_d, aes(y=LEclass01, x=log10(MinAge_mo), color=E)) + 

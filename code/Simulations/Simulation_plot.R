@@ -4,7 +4,6 @@
 library(ggplot2)
 library(dplyr)
 library(tidyr)
-library(rEDM)
 library(cowplot)
 
 source("./code/Simulations/ggplot_themes_rogers.R")
@@ -22,7 +21,9 @@ sims_v=left_join(sims_v, sims_v2)
 sims_n=left_join(sims_n, sims_n2)
 
 #specify dynamics of noise models
-sims_n=unite(sims_n,Model,Model,Classification, remove = F)
+sims_n=sims_n %>% 
+  mutate(C2=paste0(toupper(substring(Classification,1,1)),substring(Classification,2))) %>% 
+  unite(Model,Model,C2, sep="", remove = F)
 
 #set model order
 modelorder=unique(arrange(sims_d, Classification, Model)$Model)
@@ -163,7 +164,7 @@ ggplot(filter(summary2, Method2 %in% c("JLE", "RQA", "PE")), aes(x=factor(NoiseL
                                 panel.spacing.x = unit(0.2,"lines")) 
 ggsave("./figures/SimResultsIndivModels.png", width = 7, height = 8)
 
-#Validation data ####
+#Validation data (set #1) ####
 
 #proportion correct classifications, across all models/methods
 summary=sims_vlong %>% 
@@ -200,13 +201,15 @@ ggplot(filter(summary2, Method2 %in% c("JLE", "RQA", "PE")), aes(x=factor(NoiseL
                                 panel.spacing.x = unit(0.2,"lines")) 
 ggsave("./figures/SimResultsIndivModels_validation.png", width = 7, height = 6)
 
-#Observation and process noise dataset ####
+#Observation and process noise dataset (validation set #2) ####
 
 #proportion correct classifications, individual models, top 3 methods
 summary2=sims_nlong %>% 
   group_by(Method,Classification,ObsNoise,ProcessNoise, Model) %>% 
   summarize(proportion=length(which(Methodclass=="chaotic"))/length(Methodclass)) %>% 
-  mutate(Method2=sub("class","", Method),
+  ungroup() %>% 
+  mutate(ProcessNoise=ProcessNoise/10,
+         Method2=sub("class","", Method),
          Method2=recode(Method2, LE="JLE", LEreg="DLE", DT="CDT", HVA="HVG"),
          Method2=factor(Method2, levels=c("DLE", "JLE","RQA","PE","HVG","CDT")))
 ggplot(filter(summary2, Method2 %in% c("JLE", "RQA", "PE")), aes(x=factor(ObsNoise), y=Model, fill=proportion)) +
