@@ -1,35 +1,35 @@
-Site,Name,Group,JLEsign,TaxonomicClass3,Drymass_ug,Mass_ug,Mass_g,Length_mm,Gentime_d,MinAge_mo,Lifespan_mo,Reference mass,Mass notes,Reference gen time,Gen time notes
-Oneida Lake,Bosmina longirostris,cladocera,chaotic,Zooplankton,4,20,2.00E-05,0.5,3,0.1,,Dumont et al 1975, wet:dry 20%,https://doi.org/10.1016/0166-445X(94)00094-7,
-Oneida Lake,Chydorus sphaericus,cladocera,chaotic,Zooplankton,8,40,4.00E-05,0.55,8.94,0.298,,Dumont et al 1975, wet:dry 20%,,
-Lake Zurich,Daphn.hyali,cladocera,chaotic,Zooplankton,30,150,1.50E-04,1.2,8,0.267,,Geller Muller 1985,,https://doi.org/10.1007/BF00032014,
-Oneida Lake,Daphnia pulicaria,cladocera,chaotic,Zooplankton,,,5.00E-05,,7.07,0.236,,Anderson Gillooly 2017,,,
-Oneida Lake,Daphnia retrocurva,cladocera,chaotic,Zooplankton,8.418,42.092,4.21E-05,1.25,7,0.233,,Rosen 1981,,,used value for other daphnia
-Oneida Lake,Diaphanosoma sp.,cladocera,chaotic,Zooplankton,1.843,9.214,9.21E-06,0.8,6,0.2,,Rosen 1981,,https://doi.org/10.1111/j.1365-2427.2007.01733.x,
-Oneida Lake,Eubosmina coregoni,cladocera,chaotic,Zooplankton,4,20,2.00E-05,0.5,3,0.1,,used value for Bosmina,,,
-Lake Geneva,Eubosmina longispina,cladocera,chaotic,Zooplankton,4,20,2.00E-05,0.5,3,0.1,,used value for Bosmina,,,
-Lake Zurich,Cyclo.bohat,copepoda,chaotic,Zooplankton,,23.03,2.30E-05,1,27.3,0.91,,used value for other cyclops,,,
-Lake Zurich,Cyclo.vicin,copepoda,chaotic,Zooplankton,,23.03,2.30E-05,1,27.3,0.91,,,,Gillooly 2000,
-Lake Geneva,Asplanchna priodonta,rotifer,chaotic,Zooplankton,0.5,12.5,1.25E-05,,7.5,0.25,,Dumont et al 1975, wet:dry 4%,,
-Lake Geneva,Keratella cochlearis,rotifer,chaotic,Zooplankton,0.11,2.75,2.75E-06,,4.3,0.143,,Dumont et al 1975, wet:dry 4%,,
-Lake Geneva,Keratella quadrata,rotifer,chaotic,Zooplankton,0.35,8.75,8.75E-06,,2.3,0.077,,Dumont et al 1975, wet:dry 4%,https://doi.org/10.1051/limn/2018006,
-Lake Zurich,Bytho.long,,chaotic,Zooplankton,193,965,9.65E-04,,5.4,0.18,,Branstrator 2005, wet:dry 20%,,
-Lake Geneva,Bythotrephes longimanus,,chaotic,Zooplankton,193,965,9.65E-04,,5.4,0.18,,Branstrator 2005, wet:dry 20%,,
-Lake Geneva,Leptodora kindtii,,chaotic,Zooplankton,37,185,1.85E-04,5,6,0.2,,Branstrator 2005, wet:dry 20%,,
-Lake Zurich,Bosmina.sp,cladocera,not chaotic,Zooplankton,4,20,2.00E-05,0.5,3,0.1,,Dumont et al 1975, wet:dry 20%,,
-Lake Zurich,Daphn.pulex,cladocera,not chaotic,Zooplankton,55,275,2.75E-04,2.5,4,0.133,,Dumont et al 1975, wet:dry 20%,https://doi.org/10.1016/0166-445X(94)00094-7,
-Oneida Lake,Daphnia mendotae,cladocera,not chaotic,Zooplankton,,,,,7,0.233,,,,https://doi.org/10.1111/j.1365-2427.2007.01733.x,
-Lake Zurich,Cyclo.abyss,copepoda,not chaotic,Zooplankton,10,50,5.00E-05,1.3,27.3,0.91,,Dumont et al 1975, wet:dry 20%,,
-Lake Geneva,Cyclops prealpinus,copepoda,not chaotic,Zooplankton,,23.03,2.30E-05,,27.3,0.91,,used value for other cyclops,,,
-Lake Geneva,Cyclops sp,copepoda,not chaotic,Zooplankton,,23.03,2.30E-05,,27.3,0.91,,used value for other cyclops,,,
-Lake Geneva,Cyclops vicinus,copepoda,not chaotic,Zooplankton,,23.03,2.30E-05,,27.3,0.91,,,,Gillooly 2000,
-Oneida Lake,Diacyclops thomasi,copepoda,not chaotic,Zooplankton,,,,,19.5,0.65,,,,,"gen time not known, used typical copepod"
-Oneida Lake,Epischura lacustris,copepoda,not chaotic,Zooplankton,,,,,19.5,0.65,,,,,"gen time not known, used typical copepod"
-Lake Zurich,Eudiapt.graci,copepoda,not chaotic,Zooplankton,10,50,5.00E-05,,19.5,0.65,,Dumont et al 1975,,,"gen time not known, used typical copepod"
-Lake Geneva,Eudiaptomus gracilis,copepoda,not chaotic,Zooplankton,10,50,5.00E-05,,19.5,0.65,,Dumont et al 1975,,,"gen time not known, used typical copepod"
-Oneida Lake,Leptodiaptomus minutus,copepoda,not chaotic,Zooplankton,,,,0.84,19.5,0.65,,,,,"gen time not known, used typical copepod"
-Lake Zurich,Mesoc.edax,copepoda,not chaotic,Zooplankton,3.471,17.354,1.74E-05,0.9,17.2,0.573,,Rosen 1981,,https://doi.org/10.1111/j.1365-2427.2007.01733.x,
-Oneida Lake,Mesocyclops edax,copepoda,not chaotic,Zooplankton,3.471,17.354,1.74E-05,0.9,17.2,0.573,,Rosen 1981,,https://doi.org/10.1111/j.1365-2427.2007.01733.x,
-Oneida Lake,Skistodiaptomus oregonensis,copepoda,not chaotic,Zooplankton,,,,1.26,19.5,0.65,,,,,"gen time not known, used typical copepod"
-Lake Geneva,Kellicottia longispina,rotifer,not chaotic,Zooplankton,0.1,2.5,2.50E-06,,5,0.167,,,,https://doi.org/10.2307/1942575,
-Lake Geneva,Polyarthra sp,rotifer,not chaotic,Zooplankton,0.24,6,6.00E-06,,1.2,0.04,,https://doi.org/10.1080/02705060.1981.9664012, wet:dry 4%,,
-Lake Geneva,Synchaeta sp,rotifer,not chaotic,Zooplankton,0.27,6.75,6.75E-06,,1.1,0.037,,Dumont et al 1975, wet:dry 4%,https://doi.org/10.1007/BF00006966,
+Site,Name,Group,JLEsign,TaxonomicClass3,Drymass_ug,Mass_ug,Mass_g,Length_mm,Gentime_d,MinAge_mo,Reference mass,Mass notes,Reference gen time,Gen time notes
+Oneida Lake,Bosmina longirostris,cladocera,chaotic,Zooplankton,4,20,2.00E-05,0.5,3,0.1,Dumont et al 1975, wet:dry 20%,https://doi.org/10.1016/0166-445X(94)00094-7,
+Oneida Lake,Chydorus sphaericus,cladocera,chaotic,Zooplankton,8,40,4.00E-05,0.55,8.94,0.298,Dumont et al 1975, wet:dry 20%,,
+Lake Zurich,Daphn.hyali,cladocera,chaotic,Zooplankton,30,150,1.50E-04,1.2,8,0.267,Geller Muller 1985,,https://doi.org/10.1007/BF00032014,
+Oneida Lake,Daphnia pulicaria,cladocera,chaotic,Zooplankton,,,5.00E-05,,7.07,0.236,Anderson Gillooly 2017,,,
+Oneida Lake,Daphnia retrocurva,cladocera,chaotic,Zooplankton,8.418,42.092,4.21E-05,1.25,7,0.233,Rosen 1981,,,used value for other daphnia
+Oneida Lake,Diaphanosoma sp.,cladocera,chaotic,Zooplankton,1.843,9.214,9.21E-06,0.8,6,0.2,Rosen 1981,,https://doi.org/10.1111/j.1365-2427.2007.01733.x,
+Oneida Lake,Eubosmina coregoni,cladocera,chaotic,Zooplankton,4,20,2.00E-05,0.5,3,0.1,used value for Bosmina,,,
+Lake Geneva,Eubosmina longispina,cladocera,chaotic,Zooplankton,4,20,2.00E-05,0.5,3,0.1,used value for Bosmina,,,
+Lake Zurich,Cyclo.bohat,copepoda,chaotic,Zooplankton,,23.03,2.30E-05,1,27.3,0.91,used value for other cyclops,,,
+Lake Zurich,Cyclo.vicin,copepoda,chaotic,Zooplankton,,23.03,2.30E-05,1,27.3,0.91,,,Gillooly 2000,
+Lake Geneva,Asplanchna priodonta,rotifer,chaotic,Zooplankton,0.5,12.5,1.25E-05,,7.5,0.25,Dumont et al 1975, wet:dry 4%,,
+Lake Geneva,Keratella cochlearis,rotifer,chaotic,Zooplankton,0.11,2.75,2.75E-06,,4.3,0.143,Dumont et al 1975, wet:dry 4%,,
+Lake Geneva,Keratella quadrata,rotifer,chaotic,Zooplankton,0.35,8.75,8.75E-06,,2.3,0.077,Dumont et al 1975, wet:dry 4%,https://doi.org/10.1051/limn/2018006,
+Lake Zurich,Bytho.long,,chaotic,Zooplankton,193,965,9.65E-04,,5.4,0.18,Branstrator 2005, wet:dry 20%,,
+Lake Geneva,Bythotrephes longimanus,,chaotic,Zooplankton,193,965,9.65E-04,,5.4,0.18,Branstrator 2005, wet:dry 20%,,
+Lake Geneva,Leptodora kindtii,,chaotic,Zooplankton,37,185,1.85E-04,5,6,0.2,Branstrator 2005, wet:dry 20%,,
+Lake Zurich,Bosmina.sp,cladocera,not chaotic,Zooplankton,4,20,2.00E-05,0.5,3,0.1,Dumont et al 1975, wet:dry 20%,,
+Lake Zurich,Daphn.pulex,cladocera,not chaotic,Zooplankton,55,275,2.75E-04,2.5,4,0.133,Dumont et al 1975, wet:dry 20%,https://doi.org/10.1016/0166-445X(94)00094-7,
+Oneida Lake,Daphnia mendotae,cladocera,not chaotic,Zooplankton,,,,,7,0.233,,,https://doi.org/10.1111/j.1365-2427.2007.01733.x,
+Lake Zurich,Cyclo.abyss,copepoda,not chaotic,Zooplankton,10,50,5.00E-05,1.3,27.3,0.91,Dumont et al 1975, wet:dry 20%,,
+Lake Geneva,Cyclops prealpinus,copepoda,not chaotic,Zooplankton,,23.03,2.30E-05,,27.3,0.91,used value for other cyclops,,,
+Lake Geneva,Cyclops sp,copepoda,not chaotic,Zooplankton,,23.03,2.30E-05,,27.3,0.91,used value for other cyclops,,,
+Lake Geneva,Cyclops vicinus,copepoda,not chaotic,Zooplankton,,23.03,2.30E-05,,27.3,0.91,,,Gillooly 2000,
+Oneida Lake,Diacyclops thomasi,copepoda,not chaotic,Zooplankton,,,,,19.5,0.65,,,,"gen time not known, used typical copepod"
+Oneida Lake,Epischura lacustris,copepoda,not chaotic,Zooplankton,,,,,19.5,0.65,,,,"gen time not known, used typical copepod"
+Lake Zurich,Eudiapt.graci,copepoda,not chaotic,Zooplankton,10,50,5.00E-05,,19.5,0.65,Dumont et al 1975,,,"gen time not known, used typical copepod"
+Lake Geneva,Eudiaptomus gracilis,copepoda,not chaotic,Zooplankton,10,50,5.00E-05,,19.5,0.65,Dumont et al 1975,,,"gen time not known, used typical copepod"
+Oneida Lake,Leptodiaptomus minutus,copepoda,not chaotic,Zooplankton,,,,0.84,19.5,0.65,,,,"gen time not known, used typical copepod"
+Lake Zurich,Mesoc.edax,copepoda,not chaotic,Zooplankton,3.471,17.354,1.74E-05,0.9,17.2,0.573,Rosen 1981,,https://doi.org/10.1111/j.1365-2427.2007.01733.x,
+Oneida Lake,Mesocyclops edax,copepoda,not chaotic,Zooplankton,3.471,17.354,1.74E-05,0.9,17.2,0.573,Rosen 1981,,https://doi.org/10.1111/j.1365-2427.2007.01733.x,
+Oneida Lake,Skistodiaptomus oregonensis,copepoda,not chaotic,Zooplankton,,,,1.26,19.5,0.65,,,,"gen time not known, used typical copepod"
+Lake Geneva,Kellicottia longispina,rotifer,not chaotic,Zooplankton,0.1,2.5,2.50E-06,,5,0.167,,,https://doi.org/10.2307/1942575,
+Lake Geneva,Polyarthra sp,rotifer,not chaotic,Zooplankton,0.24,6,6.00E-06,,1.2,0.04,https://doi.org/10.1080/02705060.1981.9664012, wet:dry 4%,,
+Lake Geneva,Synchaeta sp,rotifer,not chaotic,Zooplankton,0.27,6.75,6.75E-06,,1.1,0.037,Dumont et al 1975, wet:dry 4%,https://doi.org/10.1007/BF00006966,

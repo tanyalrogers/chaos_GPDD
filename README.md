@@ -11,7 +11,7 @@ We employed 6 chaos detection methods:
 
 All methods were applied to simulated data. The most reliable methods (JLE, RQA, PE) were applied to empirical data in the Global Population Dynamics Database (GPDD).
 
-DLE and JLE are implemented in R. For JLE, the code uses rEDM version 0.7.4. Newer versions of the package are not backwards compatible.  
+DLE and JLE are implemented in R. For JLE, the code uses rEDM version 0.7.4. Newer versions of rEDM are not compatible.  
 
 The remaining methods are implemented in MATLAB. The RQA code requires access to the CRP toolbox which must be requested [here](https://tocsy.pik-potsdam.de/CRPtoolbox/).
 
@@ -37,13 +37,17 @@ Name | Description
 ------- | -------
 `simulation_dataset_embedding.csv` | Simulated *embedding* dataset.
 `simulation_dataset_test.csv` | Simulated *test* dataset.
-`simulation_dataset_validation.csv` | Simulated *validation* dataset.
+`simulation_dataset_validation.csv` | Simulated *validation* dataset #1.
+`simulation_dataset_noise_test.csv` | Simulated *validation* dataset #2.
 `sims_test_E.csv` `sims_test_tau.csv` | E and tau values for test dataset.
-`sims_validation_E.csv` `sims_validation_tau.csv` | E and tau values for validation dataset.
+`sims_validation_E.csv` `sims_validation_tau.csv` | E and tau values for validation dataset #1.
+`sims_noise_E.csv` `sims_noise_tau.csv` | E and tau values for validation dataset #2.
 `sims_test_results.csv` | JLE and DLE results, test dataset.
 `sims_test_results_othermethods.csv` | RQA, PE, HVG, and CDT results, test dataset.
-`sims_validation_results.csv` | JLE and DLE results, validation dataset.
-`sims_validation_results_othermethods.csv` | RQA, PE, HVG, and CDT results, validation dataset.
+`sims_validation_results.csv` | JLE and DLE results, validation dataset #1.
+`sims_validation_results_othermethods.csv` | RQA, PE, HVG, and CDT results, validation dataset #1.
+`sims_noise_results.csv` | JLE and DLE results, validation dataset #2.
+`sims_noise_results_othermethods.csv` | RQA, PE, HVG, and CDT results, validation dataset #2.
 `gpdd_lifehistory.csv` | Life history and other additional metadata for GPDD species used.
 `gpdd_timeseries.csv` | Cleaned GPDD time series in long format.
 `gpdd_ts_metadata.csv` | All metadata for cleaned GPDD time series.
@@ -52,3 +56,5 @@ Name | Description
 `gpdd_results_truncation_smap.csv` | JLE results for GPDD time series (truncated chaotic series).
 `gpdd_results_othermethods.csv` | RQA and PE results for GPDD time series.
 `AndersonGilloolyLEdata.csv` | Empirical LE data from Anderson and Gillooly 2020.
+`lakes_results_smap.csv` | JLE results for lake time series.
+`lakes_ts_metadata.csv` | Life history data for lake time series.
