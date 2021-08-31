@@ -64,12 +64,12 @@ Es=ggplot(gpdd_d, aes(x=factor(E), fill=TaxonomicClass3)) +
   #facet_grid(TaxonomicClass3~.) + 
   geom_bar(position = "stack") + xlab(expression(Embedding~dimension~(E))) +
   classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
-  labs(y="Count", fill="Taxonomic\nClass") + scale_fill_brewer(palette = "Dark2")
+  labs(y="Count", fill="Taxonomic\nGroup") + scale_fill_brewer(palette = "Dark2")
 taus=ggplot(gpdd_d, aes(x=factor(tau), fill=TaxonomicClass3)) + 
   #facet_grid(predictable_ag~.) + 
   geom_bar(position = "stack") + xlab(expression(Time~delay~(tau))) +
   classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
-  labs(y="Count", fill="Taxonomic\nClass") + scale_fill_brewer(palette = "Dark2")
+  labs(y="Count", fill="Taxonomic\nGroup") + scale_fill_brewer(palette = "Dark2")
 etau=plot_grid(Es + theme(legend.position="none"), taus + theme(legend.position="none"), align = 'vh',labels="AUTO")
 legend <- get_legend(Es + theme(legend.box.margin = margin(0, 0, 0, 12)))
 plot_grid(etau, legend, rel_widths = c(3, 0.7))
