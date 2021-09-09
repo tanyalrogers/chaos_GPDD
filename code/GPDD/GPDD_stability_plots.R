@@ -45,7 +45,7 @@ colnames(signcounts1d)<-colnames(signcountsnd)
 signcounts=rbind(signcountsnd,signcounts1d); signcounts$Econ=factor(signcounts$Econ, levels=unique(signcounts$Econ))
 ggplot(signcounts, aes(x=TaxonomicClass3, y=LEclass2)) + 
   facet_grid(.~Econ) + ylim(c(-60,20)) +
-  geom_bar(aes(fill=LEclass), stat = "identity") +
+  geom_bar(aes(fill=LEclass), stat = "identity", color="gray30") +
   geom_hline(yintercept = 0)  + classic + xlabvert + ylab("Count") +
   labs(fill="Classification", x="Taxonomic Group") + removefacetbackground +
   scale_fill_brewer(palette = "Paired", direction = -1)
@@ -89,33 +89,40 @@ lakes2=read.csv("./data/lakes_results_smap.csv",stringsAsFactors = F)
 lakes=lakes %>% filter(JLEsign=="chaotic") %>% left_join(lakes2)
 lakes$Tax4=factor(lakes$TaxonomicClass3, levels = tglevels)
 
-gpdd_pos=filter(gpdd_d, LEmin_mo>0) %>% select(Tax4,LE=LEmin_mo,Mass_g) %>% mutate(Origin="field", Source="GPDD")
-agle_pos=select(agle, Tax4, LE=LE_mo,Mass_g,Origin) %>% mutate(Source="AG2020")
-lakes_pos=select(lakes, Tax4, LE=JLE,Mass_g) %>% mutate(Origin="field",Source="Lakes")
+gpdd_pos=filter(gpdd_d, LEmin_mo>0) %>% select(Tax4,LE=LEmin_mo,Mass_g) %>% mutate(Origin="field", Source="GPDD", stroke=0.5)
+agle_pos=select(agle, Tax4, LE=LE_mo,Mass_g,Origin) %>% mutate(Source="AG2020", stroke=0.5)
+lakes_pos=select(lakes, Tax4, LE=JLE,Mass_g) %>% mutate(Origin="field",Source="Lakes", stroke=1.25)
 posLE=rbind(gpdd_pos, agle_pos,lakes_pos) 
 posLE2=rbind(gpdd_pos, agle_pos) 
+write.csv(posLE,"archive/posLE.csv",row.names = F)
 
 lemass2=ggplot(posLE, aes(y=log10(LE), x=log10(Mass_g))) + 
   ylab(expression(~log[10]~LE~(month^-1))) + xlab(expression(~log[10]~Mass~(g))) +
   geom_smooth(data=posLE2, method="lm", se = F, color="black") +
-  geom_point(aes(shape=Source,size=Source,fill=Tax4), color="black", alpha=0.9, stroke=0.5) + 
+  geom_point(aes(shape=Source,size=Source,fill=Tax4,stroke=stroke), color="black", alpha=0.9) + 
   # geom_point(data=agle, aes(y=log10(LE_mo), fill=Tax4, shape="AG2020"), stroke=0.5, size=2) +
   # geom_point(data=lakes, aes(y=log10(JLE), fill=Tax4, shape="Lakes"), stroke=0.5, size=3) +
   classic + labs(fill="Taxonomic\nGroup", shape="Source") + scale_fill_brewer(palette = "Dark2", drop=F) +
   scale_shape_manual(values = c(24,21,22)) + scale_size_manual(values = c(2,3.5,3)) +
   guides(fill = guide_legend(override.aes = list(size = 3.5, shape=21))) +
-        # shape = guide_legend(override.aes = list(size = c(2,3.5,3)))) +
+  guides(shape = guide_legend(override.aes = list(stroke = c(0.5,0.5,1.25)))) +
   theme(axis.title = element_text(size=12), axis.text = element_text(size=10))
-ggsave("./figures/mass_scaling2.png", lemass2, width = 5.25, height = 4)
+ggsave("./figures/mass_scaling3.png", lemass2, width = 5.25, height = 4)
 
 #scaling exponent
-summary(lm(log10(LE)~log10(Mass_g),data=posLE2))
+summary(sexp<-lm(log10(LE)~log10(Mass_g),data=posLE2))
 
 t1<-lm(log10(LE)~log10(Mass_g),data=gpdd_pos)
 t2<-lm(log10(LE)~log10(Mass_g)+Tax4,data=gpdd_pos)
 t3<-lm(log10(LE)~log10(Mass_g)*Tax4,data=gpdd_pos)
 lmtest::lrtest(t1,t2)
 lmtest::lrtest(t1,t3)
+
+#lake predictions
+lakepred=predict(sexp,newdata = lakes_pos)
+ve=sum(residuals(sexp)^2)/sexp$df.residual
+lakepredz=abs(lakepred-log10(lakes_pos$LE))/sqrt(ve)
+lakepredz>1.96
 
 #classification and LE vs gen time, E ####
 classgtE=ggplot(gpdd_d, aes(y=LEclass01, x=log10(MinAge_mo), color=E)) + 
@@ -225,3 +232,52 @@ ggsave("./figures/shortchaotic_change.png", width = 4, height = 3)
 mg=glm(LEcchange01~log10(MinAge_mo), data=gpdd_combo_sub2, family="binomial")
 car::Anova(mg)
 summary(mg)
+
+# histograms ####
+
+#CV
+breaks=pretty(gpdd_d$CV,10)
+gpdd_d$CVclass=cut(gpdd_d$CV,breaks,labels = (breaks+diff(breaks[1:2])/2)[-length(breaks)])
+signcountsCV=aggregate(LEmin~LEclass*CVclass, data=gpdd_d, FUN=length) %>% 
+  mutate(LEclass2=ifelse(LEclass=="not chaotic", LEmin*-1,LEmin))
+hCV=ggplot(signcountsCV, aes(x=CVclass, y=LEclass2)) + 
+  geom_col(aes(fill=LEclass), width=1,color="gray30") +
+  geom_hline(yintercept = 0)  + classic +  ylab("Count") +
+  labs(fill="Classification", x="Coefficient of variation") + 
+  scale_fill_brewer(palette = "Paired", direction = -1) +
+  theme(legend.position = c(1,0), legend.justification = c(1,0), legend.background = element_blank())
+
+#R2
+breaks=pretty(gpdd_d$R2abund,10)
+gpdd_d$R2class=cut(gpdd_d$R2abund,breaks,labels = (breaks+diff(breaks[1:2])/2)[-length(breaks)])
+signcountsR2=aggregate(LEmin~LEclass*R2class, data=gpdd_d, FUN=length) %>% 
+  mutate(LEclass2=ifelse(LEclass=="not chaotic", LEmin*-1,LEmin))
+hR2=ggplot(signcountsR2, aes(x=R2class, y=LEclass2)) + 
+  geom_col(aes(fill=LEclass), width=1,color="gray30", show.legend = F) +
+  geom_hline(yintercept = 0)  + classic +  ylab("Count") +
+  labs(fill="Classification", x=expression(R^2~'for'~abundance)) + 
+  scale_fill_brewer(palette = "Paired", direction = -1) 
+
+#theta
+signcountstheta=aggregate(LEmin~LEclass*theta, data=gpdd_d, FUN=length) %>% 
+  mutate(LEclass2=ifelse(LEclass=="not chaotic", LEmin*-1,LEmin))
+htheta=ggplot(signcountstheta, aes(x=factor(theta), y=LEclass2)) + 
+  ylim(c(-61,20)) +
+  geom_col(aes(fill=LEclass), color="gray30", show.legend = F) +
+  geom_hline(yintercept = 0)  + classic +  ylab("Count") +
+  labs(fill="Classification", x=expression(Nonlinearity~(theta))) + removefacetbackground +
+  scale_fill_brewer(palette = "Paired", direction = -1) 
+
+#monotonic trend
+breaks=pretty(gpdd_d$monotonicR2,10)
+gpdd_d$monoclass=cut(gpdd_d$monotonicR2,breaks,labels = (breaks+diff(breaks[1:2])/2)[-length(breaks)])
+signcountsmono=aggregate(LEmin~LEclass*monoclass, data=gpdd_d, FUN=length) %>% 
+  mutate(LEclass2=ifelse(LEclass=="not chaotic", LEmin*-1,LEmin))
+hmono=ggplot(signcountsmono, aes(x=monoclass, y=LEclass2)) + 
+  geom_col(aes(fill=LEclass), width=1,color="gray30", show.legend = F) +
+  geom_hline(yintercept = 0)  + classic +  ylab("Count") +
+  labs(fill="Classification", x=expression(Monotonic~trend~R^2)) + 
+  scale_fill_brewer(palette = "Paired", direction = -1)
+
+plot_grid(hCV,hR2,htheta,hmono,ncol = 2, align = "vh", labels = "AUTO")
+ggsave("./figures/histograms.png", width = 8, height = 6)

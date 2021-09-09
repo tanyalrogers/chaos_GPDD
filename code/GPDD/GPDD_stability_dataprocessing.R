@@ -188,12 +188,20 @@ monotonic_eval=function(data) {
 }
 gpdd_d$monotonicR2=map_dbl(gpdd_d$data_rescale, monotonic_eval)
 
+#CV
+gpdd_d$CV=map_dbl(gpdd_d$data_rescale, ~sd(.x$PopRescale, na.rm=T)/mean(.x$PopRescale, na.rm=T))
+
+#median growth rate
+gpdd_d$mo_timestep=timescale_ratio(gpdd_d$SamplingInterval,1,1)
+gpdd_d$mediangr=map_dbl(gpdd_d$data_rescale, ~median(.x$PopRescale_gr, na.rm=T))
+gpdd_d$mediangr_mo=gpdd_d$mediangr/gpdd_d$mo_timestep
+
 #unnest table
 gpdd_dun = unnest(select(gpdd_d, MainID, CommonName, data_rescale))
 
 #export files
 write.csv(gpdd_dun, "./data/gpdd_timeseries.csv", row.names = F)
-write.csv(select(gpdd_d, MainID:Notes, data_rescale_case, monotonicR2), "./data/gpdd_ts_metadata.csv", row.names = F)
+write.csv(select(gpdd_d, MainID:Notes, data_rescale_case, monotonicR2:mediangr_mo), "./data/gpdd_ts_metadata.csv", row.names = F)
 
 # #save nested table
 # save(gpdd_d, file = "./data/gpdd_d.Rdata")
