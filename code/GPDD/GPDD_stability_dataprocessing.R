@@ -1,5 +1,4 @@
 # Processes, filters, and cleans GPDD data
-# Tanya Rogers
 
 library("rgpdd")
 library("dplyr")

@@ -1,5 +1,4 @@
 # Applies Jacobian and Direct LE chaos detection methods to simulated data
-# Tanya Rogers
 
 library(dplyr)
 library(tidyr)

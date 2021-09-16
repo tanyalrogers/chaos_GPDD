@@ -1,5 +1,5 @@
 # Chaos in the Global Population Dynamics Database
-This repository contains the data and code associated with the paper "Chaos is not rare in natural ecosystems" by Tanya L. Rogers, Bethany J. Johnson, and Stephan B. Munch.  
+This repository contains the data and code associated with the paper "Chaos is not rare in natural ecosystems".  
 
 We employed 6 chaos detection methods:  
 1. Direct LE estimaton (DLE)

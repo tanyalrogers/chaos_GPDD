@@ -2,7 +2,6 @@
 # - select the best E, tau, and theta
 # - get Lyaponov exponents (LEs) using the Jacobian method (B2 in paper)
 # - get LEs using the direct method (B1 in paper)
-# Tanya Rogers
 
 #### Jacobian LE Method (B2) ####
 

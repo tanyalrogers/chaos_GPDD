@@ -1,12 +1,11 @@
 # Plots of simuation results
-# Tanya Rogers
 
 library(ggplot2)
 library(dplyr)
 library(tidyr)
 library(cowplot)
 
-source("./code/Simulations/ggplot_themes_rogers.R")
+source("./code/Simulations/ggplot_themes.R")
 
 #load data
 sims_d=read.csv("./data/sims_test_results.csv")

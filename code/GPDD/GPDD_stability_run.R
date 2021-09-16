@@ -1,6 +1,5 @@
 # Applies Jacobian LE chaos detection method to GPDD
 # Includes selection of E and tau used by RQA
-# Tanya Rogers
 
 library("rEDM")
 library("dplyr")
