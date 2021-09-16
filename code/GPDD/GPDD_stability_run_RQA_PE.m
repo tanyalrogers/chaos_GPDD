@@ -1,6 +1,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% This script applies RQA, RE, HVG, and CDT methods to empirical data 
+% This script applies RQA and PE methods to empirical data 
 % from the GPDD
+%
+% NOTE: The CRP Toolbox is required. If the toolbox is not installed,
+% this file will produce an error. 
 %
 % Results from running this script are in 
 % "gpdd_results_othermethods.csv" in the GitHub data folder
@@ -26,7 +29,7 @@ for i = 1:length(MainIDs)
     
     % Get the time series, E, and tau
      indices= find(gpdd_data.MainID==IDnum);
-     TimeSeries =str2double(gpdd_data.PopRescale(indices));
+     TimeSeries =gpdd_data.PopRescale(indices);
      E=EandTau.E(EandTau.MainID==IDnum);
      tau=EandTau.tau(EandTau.MainID==IDnum);
         
