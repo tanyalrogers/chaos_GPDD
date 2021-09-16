@@ -26,7 +26,7 @@ Simulations | `ChaosClassification_Example.m` | Simple example of how to generat
 Simulations | `Simulation_run.R` | Applies JLE and DLE to simulated datasets. Also obtains E and tau for use in other analyses. Note: This file takes >24 hours to run in full.
 Simulations | `Simulation_run_MethodsB3toB6.m` | Applies RQA, RE, HVG, and CDT methods to simulated data. Note: This file takes >10 hours to run in full.
 Simulations | `Simulation_plot.R` | Loads simulation results and generates plots.
-Simulations | `ggplot_themes_rogers.R` | Custom ggplot themes for plotting.
+Simulations | `ggplot_themes.R` | Custom ggplot themes for plotting.
 GPDD | `GPDD_stability_dataprocessing.R` | Obtains and filters GPDD time series from package rgpdd and merges with information in `gpdd_lifehistory.csv`.
 GPDD | `GPDD_stability_run.R` | Applies JLE to GPDD data. Also obtains E and tau for use in other analyses. 
 GPDD | `GPDD_stability_run_RQA_PE.m` | Applies RQA and PE to GPDD data.
