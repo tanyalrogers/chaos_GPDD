@@ -97,7 +97,6 @@ sims_d$Ebest=map_dbl(sims_results$modelresultsbest, ~.x$modelstats$E)
 sims_d$taubest=map_dbl(sims_results$modelresultsbest, ~.x$modelstats$tau)
 sims_d$thetabest=map_dbl(sims_results$modelresultsbest, ~.x$modelstats$theta)
 sims_d$R2best=map_dbl(sims_results$modelresultsbest, ~.x$modelstats$R2abund)
-sims_d$gle=map_dbl(sims_results$stability, ~.x$gle)
 sims_d$minmean=map_dbl(sims_results$LEshift, ~.x$minmean)
 sims_d$minci=map_dbl(sims_results$LEshift, ~.x$minci)
 
