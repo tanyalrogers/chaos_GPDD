@@ -1,11 +1,13 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% This script applies RQA, RE, HVG, and CDT methods to all simulated data 
+% This script applies RQA, PE, HVG, and CDT methods to all simulated data 
 % in the test dataset and the validation dataset
 %
-% NOTE: This script takes >20 hours to run in full
+% NOTE: This script takes >20 hours to run in full and the CRP Toolbox and
+% Signal Processing Toolbox are required. If the toolboxes are not
+% installed, this file will produce an error. 
 %
 % Results from running the TEST DATA section are in 
-% "sims_test_results_othermethods.csv" in the GitHub data folder
+% "sims_test_results_othermethods.csv" in the GitHub data folders
 %
 % Results from running the VALIDATION DATA section are in 
 % "sims_validation_results_othermethods.csv" in the GitHub data folder
