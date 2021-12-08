@@ -19,7 +19,8 @@ besthyper=function(
   y, #either a time series vector, or the name of the time series variable in 'data'
   ylog, #whether or not to log the data (T/F)
   pgr="none", #whether response variable should be untransformed "none", first difference "fd", or growth rate "gr"
-  returntable=F #return full model selection table rather than just best model
+  returntable=F, #return full model selection table rather than just best model
+  yboot=NULL #bootstrapped response variable
   ) { 
   
   #if using first difference as response, ylog must be set to F
@@ -71,7 +72,7 @@ besthyper=function(
     model_selection=filter(model_selection, E^2<=serlen)
   } else {
     #if both fixed, make sure E isn't too large
-    while(model_selection$E^2>serlen) {
+    while(unique(model_selection$E)^2>serlen) {
         model_selection$E=model_selection$E-1
     }
   }
@@ -92,6 +93,9 @@ besthyper=function(
     if(pgr=="gr") {
       ser_lags$col1=ser_log-lag(ser_log,model_selection$tau[i])
     } 
+    if(!is.null(yboot)) { #if bootstrap, swap response variable
+      ser_lags$col1=yboot
+    }
     simptemp=block_lnlp(ser_lags, tp = 0, method = "s-map", 
                         columns = paste0("col1_",model_selection$tau[i]*(1:model_selection$E[i])), 
                         target_column = "col1", theta=model_selection$theta[i],
@@ -140,7 +144,8 @@ smap_model=function(
   ylog, #whether or not to log the data (T/F)
   pgr="none", #whether response variable should be untransformed "none", first difference "fd", or growth rate "gr"
   Efix=NULL, #option to fix tau to a particular value
-  taufix=NULL #option to fix tau to a particular value
+  taufix=NULL, #option to fix tau to a particular value
+  yboot=NULL #bootstrapped response variable
   ) {
 
   #get hyper parameters if not already supplied
@@ -148,7 +153,7 @@ smap_model=function(
   if(!is.null(hypars)) {
     hyperpars=hypars
   } else {
-    hyperpars=besthyper(data=data, y=y, ylog=ylog, pgr=pgr, Efix=Efix, taufix=taufix)
+    hyperpars=besthyper(data=data, y=y, ylog=ylog, pgr=pgr, Efix=Efix, taufix=taufix, yboot=yboot)
   }
   
   #if providing data frame containing y, give y as character (column name)
@@ -170,6 +175,9 @@ smap_model=function(
   if(pgr=="gr") {
     ser_lags$col1=ser_log-lag(ser_log,hyperpars$bestTau)
   } 
+  if(!is.null(yboot)) { #if bootstrap, swap response variable
+    ser_lags$col1=yboot
+  }
   smap_results=block_lnlp(ser_lags, tp = 0, method = "s-map", 
                           columns = paste0("col1_",hyperpars$bestTau*(1:hyperpars$bestE)), 
                           target_column = "col1", theta=hyperpars$bestTheta,
@@ -206,26 +214,26 @@ smap_model=function(
   modelstats=data.frame(E=hyperpars$bestE, tau=hyperpars$bestTau, theta=hyperpars$bestTheta, 
                         Emax=hyperpars$Emax, taumax=hyperpars$taumax, num_pred=smap_results$num_pred,
                         R2model=modelR2, R2abund=modelR2_abund, rho=smap_results$rho)
-  return(list(modelstats=modelstats, resultsdf=resultsdf, form=form))
+  return(list(modelstats=modelstats, resultsdf=resultsdf, form=form, smap_results=smap_results, ser_lags=ser_lags))
 }
 
 #Calls smap_model with several pre-specified model forms
 #Note that models 1&3 and 2&5 produce identical (backtransformed) output
-smap_model_options=function(data, hypars=NULL, Efix=NULL, taufix=NULL, y, model) {
+smap_model_options=function(data, hypars=NULL, Efix=NULL, taufix=NULL, y, model, yboot=NULL) {
   if(model==1) { #"ut-ut", response and predictors both untransformed
-    modelresults=smap_model(data, hypars=hypars, y=y, ylog=F, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, hypars=hypars, y=y, ylog=F, Efix=Efix, taufix=taufix, yboot=yboot)
   }
   if(model==2) { #"log-log", response and predictors both log transformed
-    modelresults=smap_model(data, hypars=hypars, y=y, ylog=T, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, hypars=hypars, y=y, ylog=T, Efix=Efix, taufix=taufix, yboot=yboot)
   }
   if(model==3) { #"fd-ut", response = first difference, predictors untransformed
-    modelresults=smap_model(data, hypars=hypars, y=y, pgr="fd", ylog=F, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, hypars=hypars, y=y, pgr="fd", ylog=F, Efix=Efix, taufix=taufix, yboot=yboot)
   }
   if(model==4) { #"gr-ut", response = growth rate, predictors untransformed
-    modelresults=smap_model(data, hypars=hypars, y=y, pgr="gr", ylog=F, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, hypars=hypars, y=y, pgr="gr", ylog=F, Efix=Efix, taufix=taufix, yboot=yboot)
   }
   if(model==5) { #"gr-log", response = growth rate, predictors log transformed
-    modelresults=smap_model(data, hypars=hypars, y=y, pgr="gr", ylog=T, Efix=Efix, taufix=taufix)
+    modelresults=smap_model(data, hypars=hypars, y=y, pgr="gr", ylog=T, Efix=Efix, taufix=taufix, yboot=yboot)
   }
   return(modelresults)
 }
@@ -405,7 +413,7 @@ LEshift=function(
               Q=qr.Q(QR)
               Rcum=R%*%Rcum
             }
-            LEtemp2[a]=1/nk*log(max(abs(diag(Rcum))))/tau
+            LEtemp2[a]=log(max(abs(diag(Rcum))))/tau/nk
           }
         }
       }
@@ -429,6 +437,14 @@ LE1d=function(data, model, taufix=NULL, y) {
   jacobians=getJacobians(modelresults)
   JLE=LEshift(modelresults, jacobians)
   return(list(modelresults=modelresults, jacobians=jacobians, JLE=JLE))
+}
+
+#Get LE from particular model with E and tau fixed
+LEfix=function(data, model, Efix=NULL, taufix=NULL, y) {
+  modelresults=smap_model_options(data=data, y=y, model=model, Efix=Efix, taufix=taufix)
+  jacobians=getJacobians(modelresults)
+  JLE=LEshift(modelresults, jacobians)
+  return(list(modelresults=modelresults, JLE=JLE))
 }
 
 #### Direct LE Method (B1) ####

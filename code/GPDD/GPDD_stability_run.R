@@ -56,6 +56,8 @@ length(which(gpdd_d$minci>0.01))/length(which(!is.na(gpdd_d$minci)))
 #convert LE estimate to common timescale
 gpdd_d$minci_mo=gpdd_d$minci/timescale_mo(gpdd_d$SamplingInterval, 1)
 gpdd_d$minci_gen=gpdd_d$minci_mo*gpdd_d$MinAge_mo
+gpdd_d$minmean_mo=gpdd_d$minmean/timescale_mo(gpdd_d$SamplingInterval, 1)
+gpdd_d$minmean_gen=gpdd_d$minmean_mo*gpdd_d$MinAge_mo
 
 #predictability of time series (abundance, growth rate, both, neither)
 predthreshold=0.2
@@ -66,6 +68,7 @@ gpdd_d$predictable_ag=ifelse(gpdd_d$bestR2>predthreshold & gpdd_d$bestR2m>predth
 #fix E to 1 for best model, recompute LE ####
 gpdd_results$LE1d=map2(gpdd_d$data_rescale, gpdd_d$bestmodel+2, LE1d, y="PopRescale")
 gpdd_d$minci1d=map_dbl(gpdd_results$LE1d, ~.x$JLE$minci)
+gpdd_d$minmean1d=map_dbl(gpdd_results$LE1d, ~.x$JLE$minmean)
 gpdd_d$mincisign1d=ifelse(gpdd_d$minci1d>0.01, "chaotic", "not chaotic")
 length(which(gpdd_d$minci1d>0.01))/length(which(!is.na(gpdd_d$minci1d)))
 
@@ -121,6 +124,8 @@ gpdd_short$mincisign=ifelse(gpdd_short$minci>0.01, "chaotic", "not chaotic")
 #convert to common timescale
 gpdd_short$minci_mo=gpdd_short$minci/timescale_mo(gpdd_short$SamplingInterval, 1)
 gpdd_short$minci_gen=gpdd_short$minci_mo*gpdd_short$MinAge_mo
+gpdd_short$minmean_mo=gpdd_short$minmean/timescale_mo(gpdd_short$SamplingInterval, 1)
+gpdd_short$minmean_gen=gpdd_short$minmean_mo*gpdd_short$MinAge_mo
 
 #predictability
 gpdd_short$predictable_ag=ifelse(gpdd_short$bestR2>predthreshold & gpdd_short$bestR2m>predthreshold, "ag",
@@ -128,6 +133,61 @@ gpdd_short$predictable_ag=ifelse(gpdd_short$bestR2>predthreshold & gpdd_short$be
                                     ifelse(gpdd_short$bestR2<=predthreshold & gpdd_short$bestR2m>predthreshold, "g", "none")))
 
 gpdd_combo=rbind(gpdd1,gpdd_short)
+
+# sensitivity to changes in E and tau ####
+gpdd_d$modnum=case_when(gpdd_d$modelform =="ut-ut" ~ 1,
+                        gpdd_d$modelform =="log-log" ~ 2,
+                        gpdd_d$modelform =="fd-ut" ~ 3,
+                        gpdd_d$modelform =="gr-ut" ~ 4,
+                        gpdd_d$modelform =="gr-log" ~ 5)
+gpdd_d$Eplus=ifelse(gpdd_d$E+1>6,6,gpdd_d$E+1)
+gpdd_d$Eminus=ifelse(gpdd_d$E-1<1,1,gpdd_d$E-1)
+gpdd_d$tauplus=ifelse(gpdd_d$tau+1>6,6,gpdd_d$tau+1)
+gpdd_d$tauminus=ifelse(gpdd_d$tau-1<1,1,gpdd_d$tau-1)
+
+gpdd_results$sens1=pmap(list(data=gpdd_d$data_rescale, model=gpdd_d$modnum,
+                             Efix=gpdd_d$Eplus,taufix=gpdd_d$tau),LEfix, y="PopRescale")
+gpdd_results$sens2=pmap(list(data=gpdd_d$data_rescale, model=gpdd_d$modnum,
+                             Efix=gpdd_d$Eminus,taufix=gpdd_d$tau),LEfix, y="PopRescale")
+gpdd_results$sens3=pmap(list(data=gpdd_d$data_rescale, model=gpdd_d$modnum,
+                             Efix=gpdd_d$E,taufix=gpdd_d$tauplus),LEfix, y="PopRescale")
+gpdd_results$sens4=pmap(list(data=gpdd_d$data_rescale, model=gpdd_d$modnum,
+                             Efix=gpdd_d$E,taufix=gpdd_d$tauminus),LEfix, y="PopRescale")
+
+gpdd_d$sens1LEmin=map_dbl(gpdd_results$sens1, ~.x$JLE$minci)
+gpdd_d$sens2LEmin=map_dbl(gpdd_results$sens2, ~.x$JLE$minci)
+gpdd_d$sens3LEmin=map_dbl(gpdd_results$sens3, ~.x$JLE$minci)
+gpdd_d$sens4LEmin=map_dbl(gpdd_results$sens4, ~.x$JLE$minci)
+
+gpdd_d$sens1LEsign=ifelse(gpdd_d$sens1LEmin>0.01, "chaotic", "not chaotic")
+gpdd_d$sens2LEsign=ifelse(gpdd_d$sens2LEmin>0.01, "chaotic", "not chaotic")
+gpdd_d$sens3LEsign=ifelse(gpdd_d$sens3LEmin>0.01, "chaotic", "not chaotic")
+gpdd_d$sens4LEsign=ifelse(gpdd_d$sens4LEmin>0.01, "chaotic", "not chaotic")
+
+gpdd_d$sens1R2=map_dbl(gpdd_results$sens1, ~.x$modelresults$modelstats$R2abund)
+gpdd_d$sens2R2=map_dbl(gpdd_results$sens2, ~.x$modelresults$modelstats$R2abund)
+gpdd_d$sens3R2=map_dbl(gpdd_results$sens3, ~.x$modelresults$modelstats$R2abund)
+gpdd_d$sens4R2=map_dbl(gpdd_results$sens4, ~.x$modelresults$modelstats$R2abund)
+
+sensresults=data.frame(model=c("best","E+1","E-1","tau+1","tau-1"), propchaotic=NA, meanR2=NA, medianR2=NA)
+
+sensresults$propchaotic[1]=length(which(gpdd_d$mincisign=="chaotic"))/length(which(!is.na(gpdd_d$mincisign)))
+sensresults$propchaotic[2]=length(which(gpdd_d$sens1LEsign=="chaotic"))/length(which(!is.na(gpdd_d$mincisign)))
+sensresults$propchaotic[3]=length(which(gpdd_d$sens2LEsign=="chaotic"))/length(which(!is.na(gpdd_d$mincisign)))
+sensresults$propchaotic[4]=length(which(gpdd_d$sens3LEsign=="chaotic"))/length(which(!is.na(gpdd_d$mincisign)))
+sensresults$propchaotic[5]=length(which(gpdd_d$sens4LEsign=="chaotic"))/length(which(!is.na(gpdd_d$mincisign)))
+
+sensresults$meanR2[1]=mean(gpdd_d$bestR2)
+sensresults$meanR2[2]=mean(gpdd_d$sens1R2)
+sensresults$meanR2[3]=mean(gpdd_d$sens2R2)
+sensresults$meanR2[4]=mean(gpdd_d$sens3R2)
+sensresults$meanR2[5]=mean(gpdd_d$sens4R2)
+
+sensresults$medianR2[1]=median(gpdd_d$bestR2)
+sensresults$medianR2[2]=median(gpdd_d$sens1R2)
+sensresults$medianR2[3]=median(gpdd_d$sens2R2)
+sensresults$medianR2[4]=median(gpdd_d$sens3R2)
+sensresults$medianR2[5]=median(gpdd_d$sens4R2)
 
 #### Export Results ####
 
@@ -141,8 +201,9 @@ write.csv(exportEtau, "./data/gpdd_Etau_smap.csv", row.names = F)
 #export main results
 #change names of some variables, so more intuitive
 exportres=select(gpdd_d, MainID, R2abund=bestR2, R2gr=bestR2m, predictable_ag, modelform, E, tau, theta, 
-                 LEmean=minmean, LEmin=minci, LEmin_mo=minci_mo, LEmin_gen=minci_gen, LEclass=mincisign, 
-                 LEmin1d=minci1d, LEclass1d=mincisign1d)
+                 LEmean=minmean, LEmean_mo=minmean_mo, LEmean_gen=minmean_gen, 
+                 LEmin=minci, LEmin_mo=minci_mo, LEmin_gen=minci_gen, LEclass=mincisign, 
+                 LEmin1d=minci1d, LEmean1d=minmean1d, LEclass1d=mincisign1d)
 write.csv(exportres, "./data/gpdd_results_smap.csv", row.names = F)
 #export results with shortened time series
 exportres2=select(gpdd_combo, MainID, datasetlength, tslengthcat, timescale_MinAge, MinAge_mo, Mass_g, R2abund=bestR2, R2gr=bestR2m, predictable_ag, E, tau, theta, 
