@@ -189,6 +189,8 @@ sensresults$medianR2[3]=median(gpdd_d$sens2R2)
 sensresults$medianR2[4]=median(gpdd_d$sens3R2)
 sensresults$medianR2[5]=median(gpdd_d$sens4R2)
 
+sensresults[,2:4]=round(sensresults[,2:4],2)
+
 #### Export Results ####
 
 #save results

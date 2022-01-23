@@ -66,6 +66,9 @@ gpdd_filter <- gpdd_join %>%
   filter(propzeros<0.6) %>% 
   filter(propmissing<=0.22) %>% #missing data filter
   filter(MainID!=2774) %>% #exclude shorter of duplicate series
+  filter(MainID!=2773) %>% #exclude shorter of duplicate series
+  filter(MainID!=2775) %>% #exclude shorter of duplicate series
+  filter(MainID!=2777) %>% #exclude shorter of duplicate series
   filter(MainID!=1870) %>% #exclude shorter of duplicate series
   filter(MainID!=9308) %>% #exclude lower quality of duplicate series
   filter(MainID!=9685) %>% #exclude disease series

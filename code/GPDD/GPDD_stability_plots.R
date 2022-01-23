@@ -24,7 +24,7 @@ gpdd_d$PE01=ifelse(gpdd_d$PE=="chaotic",1,0)
 #general stats ####
 #number of distinct taxa (138)
 n_distinct(gpdd_d$TaxonID)
-#LEs estimated (175)
+#LEs estimated (172)
 length(which(!is.na(gpdd_d$LEmin)))
 #prop pos LE
 length(which(gpdd_d$LEmin>0.01))/length(which(!is.na(gpdd_d$LEmin)))
@@ -36,6 +36,9 @@ length(which(gpdd_d$RQA01==1))/length(which(!is.na(gpdd_d$RQA01)))
 length(which(gpdd_d$PE01==1))/length(which(!is.na(gpdd_d$PE01)))
 
 #classifications by taxon #####
+aggregate(LEmin~LEclass*TaxonomicClass3, data=gpdd_d, FUN=length) %>% 
+  spread(LEclass,LEmin) %>% mutate(propchaotic=chaotic/(chaotic+`not chaotic`))
+         
 signcountsnd=aggregate(LEmin~LEclass*TaxonomicClass3, data=gpdd_d, FUN=length) %>% 
   mutate(LEclass2=ifelse(LEclass=="not chaotic", LEmin*-1,LEmin), Econ="Free E")
 signcounts1d=aggregate(LEmin1d~LEclass1d*TaxonomicClass3, data=gpdd_d, FUN=length) %>% 
@@ -73,6 +76,28 @@ etau=plot_grid(Es + theme(legend.position="none"), taus + theme(legend.position=
 legend <- get_legend(Es + theme(legend.box.margin = margin(0, 0, 0, 12)))
 plot_grid(etau, legend, rel_widths = c(3, 0.7))
 ggsave("./figures/Etaudist.png", width = 8, height = 3.5)
+
+# E tau theta chaotic/notchaotic
+Es=ggplot(gpdd_d, aes(x=factor(E), fill=TaxonomicClass3)) + 
+  facet_grid(.~LEclass) + 
+  geom_bar(position = "stack") + xlab(expression(Embedding~dimension~(E))) +
+  classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
+  labs(y="Count", fill="Taxonomic\nGroup") + scale_fill_brewer(palette = "Dark2") + 
+  removefacetbackground
+taus=ggplot(gpdd_d, aes(x=factor(tau), fill=TaxonomicClass3)) + 
+  facet_grid(.~LEclass) + 
+  geom_bar(position = "stack") + xlab(expression(Time~delay~(tau))) +
+  classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
+  labs(y="Count", fill="Taxonomic\nGroup") + scale_fill_brewer(palette = "Dark2") + 
+  removefacetbackground
+thetas=ggplot(gpdd_d, aes(x=factor(theta), fill=TaxonomicClass3)) + 
+  facet_grid(.~LEclass) + 
+  geom_bar(position = "stack") + xlab(expression(Nonlinearity~(theta))) +
+  classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
+  labs(y="Count", fill="Taxonomic\nGroup") + scale_fill_brewer(palette = "Dark2") + 
+  removefacetbackground
+plot_grid(Es,taus,thetas,nrow=3,labels = "AUTO")
+ggsave("./figures/Etauthetadist_class.png", width = 8, height = 7)
 
 #positive le vs mass #####
 
@@ -156,6 +181,9 @@ legend <- get_legend(LEmgtE + theme(legend.box.margin = margin(0, 0, 0, 3)))
 plot_grid(left,legend, ncol = 2, rel_widths = c(1,0.1))
 ggsave("./figures/gentime2.png", width = 7, height = 3)
 
+mod=glm(LEclass01~log10(MinAge_mo), data=gpdd_d, family="binomial")
+car::Anova(mod)
+
 #classification by gen time by E (other methods)
 ggplot(gpdd_d, aes(y=RQA01, x=log10(MinAge_mo), color=E)) + 
   ylab("Proportion Chaotic") + xlab(expression(~log[10]~Generation~Time~(months))) + 
@@ -166,7 +194,15 @@ ggplot(gpdd_d, aes(y=PE01, x=log10(MinAge_mo), color=E)) +
   ylab("Proportion Chaotic") + xlab(expression(~log[10]~Generation~Time~(months))) + 
   geom_point(size=3, alpha=0.7) +
   stat_smooth(method="glm", method.args=list(family="binomial")) +
+  classic + scale_color_viridis_c()
+
+#E vs gen time
+ggplot(gpdd_d, aes(y=E, x=log10(MinAge_mo), color=E)) + 
+  ylab("Proportion Chaotic") + xlab(expression(~log[10]~Generation~Time~(months))) + 
+  geom_point(size=3, alpha=0.7) +
+  stat_smooth(method="lm") +
   classic + scale_color_viridis_c() 
+cor(log10(gpdd_d$MinAge_mo),gpdd_d$E,use = "p")
 
 #LE vs R2 ####
 r2class=ggplot(gpdd_d, aes(y=LEclass01, x=R2abund)) + 
@@ -196,13 +232,20 @@ r22=ggplot(gpdd_d, aes(y=R2abund, x=R2gr, fill=LEclass)) +
 r2plots=plot_grid(r2class + theme(legend.position="none"), r2ab + theme(legend.position="none"), nrow = 1, labels=c("A","B"))
 legend <- get_legend(r2class + theme(legend.box.margin = margin(0, 0, 0, 3)))
 plot_grid(r2plots,legend, ncol = 2, rel_widths = c(1,0.25))
-ggsave("./figures/R2LE2.png", width = 7, height = 3)
+ggsave("./figures/R2LE.png", width = 7, height = 3)
 
 r2plots=plot_grid(r2ab + theme(legend.position="none"), r2gr + theme(legend.position="none"), align = 'vh',labels="AUTO")
 legend <- get_legend(r2ab + theme(legend.box.margin = margin(0, 0, 0, 12)))
 r2plots2=plot_grid(r22, legend, ncol=2, rel_widths = c(2.5,1), labels=c("C",""))
 plot_grid(r2plots,r2plots2, nrow = 2)
 ggsave("./figures/R2LE2.png", width = 6, height = 5)
+
+mod=glm(LEclass01~R2abund, data=gpdd_d, family="binomial")
+car::Anova(mod)
+
+#restrict to high R2 values
+gpdd_sub=filter(gpdd_d,R2abund>=0.25)
+length(which(gpdd_sub$LEmin>0.01))/length(which(!is.na(gpdd_sub$LEmin)))
 
 #LE vs monotonic trend ####
 mtclass=ggplot(gpdd_d, aes(y=LEclass01, x=monotonicR2)) + 
@@ -297,3 +340,75 @@ hmono=ggplot(signcountsmono, aes(x=monoclass, y=LEclass2)) +
 
 plot_grid(hCV,hR2,htheta,hmono,ncol = 2, align = "vh", labels = "AUTO")
 ggsave("./figures/histograms.png", width = 8, height = 6)
+
+# restrict ts length and aggregate by site ####
+
+gpdd_sub50=filter(gpdd_d,ndatapoints>=50)
+gpdd_sub70=filter(gpdd_d,ndatapoints>=70)
+gpdd_sub70b=filter(gpdd_d,ndatapoints>=70 & timestep_MinAge<4)
+
+tstable=data.frame(subset=c("all","50","70","70b"),nseries=NA,nsites=NA,pindiv=NA,psitemax=NA,psitemed=NA)
+
+tstable$nseries[1]=length(which(!is.na(gpdd_d$LEmin)))
+tstable$nseries[2]=length(which(!is.na(gpdd_sub50$LEmin)))
+tstable$nseries[3]=length(which(!is.na(gpdd_sub70$LEmin)))
+tstable$nseries[4]=length(which(!is.na(gpdd_sub70b$LEmin)))
+
+tstable$pindiv[1]=length(which(gpdd_d$LEmin>0.01))/length(which(!is.na(gpdd_d$LEmin)))
+tstable$pindiv[2]=length(which(gpdd_sub50$LEmin>0.01))/length(which(!is.na(gpdd_sub50$LEmin)))
+tstable$pindiv[3]=length(which(gpdd_sub70$LEmin>0.01))/length(which(!is.na(gpdd_sub70$LEmin)))
+tstable$pindiv[4]=length(which(gpdd_sub70b$LEmin>0.01))/length(which(!is.na(gpdd_sub70b$LEmin)))
+
+tstable$nsites[1]=n_distinct(gpdd_d$ExactName)
+tstable$nsites[2]=n_distinct(gpdd_sub50$ExactName)
+tstable$nsites[3]=n_distinct(gpdd_sub70$ExactName)
+tstable$nsites[4]=n_distinct(gpdd_sub70b$ExactName)
+
+table(gpdd_d$ExactName)
+gpdd_avg=gpdd_d %>% group_by(ExactName) %>% 
+  summarise(LEmedian=median(LEmin),
+            LEmax=max(LEmin))
+gpdd_avg50=gpdd_sub50 %>% group_by(ExactName) %>% 
+  summarise(LEmedian=median(LEmin),
+            LEmax=max(LEmin))
+gpdd_avg70=gpdd_sub70 %>% group_by(ExactName) %>% 
+  summarise(LEmedian=median(LEmin),
+            LEmax=max(LEmin))
+gpdd_avg70b=gpdd_sub70b %>% group_by(ExactName) %>% 
+  summarise(LEmedian=median(LEmin),
+            LEmax=max(LEmin))
+
+tstable$psitemed[1]=length(which(gpdd_avg$LEmedian>0.01))/length(which(!is.na(gpdd_avg$LEmedian)))
+tstable$psitemax[1]=length(which(gpdd_avg$LEmax>0.01))/length(which(!is.na(gpdd_avg$LEmax)))
+tstable$psitemed[2]=length(which(gpdd_avg50$LEmedian>0.01))/length(which(!is.na(gpdd_avg50$LEmedian)))
+tstable$psitemax[2]=length(which(gpdd_avg50$LEmax>0.01))/length(which(!is.na(gpdd_avg50$LEmax)))
+tstable$psitemed[3]=length(which(gpdd_avg70$LEmedian>0.01))/length(which(!is.na(gpdd_avg70$LEmedian)))
+tstable$psitemax[3]=length(which(gpdd_avg70$LEmax>0.01))/length(which(!is.na(gpdd_avg70$LEmax)))
+tstable$psitemed[4]=length(which(gpdd_avg70b$LEmedian>0.01))/length(which(!is.na(gpdd_avg70b$LEmedian)))
+tstable$psitemax[4]=length(which(gpdd_avg70b$LEmax>0.01))/length(which(!is.na(gpdd_avg70b$LEmax)))
+
+tstable[,4:6]=round(tstable[,4:6],2)
+
+# time series plots ####
+
+gpdd_d_ts=read.csv("./data/gpdd_timeseries.csv",stringsAsFactors = F)
+
+set.seed(111)
+gpdd_samp=select(gpdd_d,MainID,TaxonomicClass3,LEclass,TaxonName,CommonName) %>% 
+  group_by(TaxonomicClass3,LEclass) %>% 
+  mutate(keep=MainID %in% sample(MainID,size = 1,replace = F)) %>% 
+  filter(keep==T) %>% ungroup() %>% 
+  # mutate(label=paste0(CommonName," (", TaxonName, ") - ",LEclass)) %>% 
+  # mutate(label=paste(MainID, CommonName,"-",LEclass)) %>% 
+  mutate(label=paste0(CommonName, " (",MainID, ") - ",LEclass)) %>% 
+  arrange(TaxonomicClass3,LEclass) %>% 
+  mutate(label=factor(label,levels=unique(label)))
+
+gpdd_d_ts_sub=right_join(gpdd_d_ts,gpdd_samp) 
+
+ggplot(gpdd_d_ts_sub, aes(x=SeriesStep, y=PopRescale_log)) +
+  facet_wrap(.~label, scales="free", ncol=2) +
+  geom_line() + geom_point() +
+  classic + removefacetbackground +
+  labs(x="Timestep",y="log Scaled Abundance")
+ggsave("figures/sample_timeseries.png",width = 6, height = 7.5)
