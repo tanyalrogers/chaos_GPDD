@@ -400,7 +400,7 @@ gpdd_samp=select(gpdd_d,MainID,TaxonomicClass3,LEclass,TaxonName,CommonName) %>%
   filter(keep==T) %>% ungroup() %>% 
   # mutate(label=paste0(CommonName," (", TaxonName, ") - ",LEclass)) %>% 
   # mutate(label=paste(MainID, CommonName,"-",LEclass)) %>% 
-  mutate(label=paste0(CommonName, " (",MainID, ") - ",LEclass)) %>% 
+  mutate(label=paste0(CommonName, " (",MainID, ")")) %>% 
   arrange(TaxonomicClass3,LEclass) %>% 
   mutate(label=factor(label,levels=unique(label)))
 
