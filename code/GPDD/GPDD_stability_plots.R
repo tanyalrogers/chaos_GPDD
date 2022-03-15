@@ -68,7 +68,6 @@ Es=ggplot(gpdd_d, aes(x=factor(E), fill=TaxonomicClass3)) +
   classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
   labs(y="Count", fill="Taxonomic\nGroup") + scale_fill_brewer(palette = "Dark2")
 taus=ggplot(gpdd_d, aes(x=factor(tau), fill=TaxonomicClass3)) + 
-  #facet_grid(predictable_ag~.) + 
   geom_bar(position = "stack") + xlab(expression(Time~delay~(tau))) +
   classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
   labs(y="Count", fill="Taxonomic\nGroup") + scale_fill_brewer(palette = "Dark2")
@@ -124,7 +123,6 @@ posLE2=rbind(gpdd_pos, agle_pos)
 lemass1=ggplot(posLE, aes(y=log10(LEmean), x=log10(Mass_g))) + 
   ylab(expression(~log[10]~LE~(month^-1))) + xlab(expression(~log[10]~Mass~(g))) +
   geom_smooth(data=posLE2, method="lm", se = F, color="black") +
-  #geom_linerange(aes(ymin=log10(LE),ymax=log10(LEmean), color=Tax4), alpha=1,show.legend = F) + 
   geom_point(aes(shape=Source,size=Source,fill=Tax4,stroke=stroke), color="black", alpha=0.75) + 
   classic + labs(fill="Taxonomic\nGroup", shape="Source") + scale_fill_brewer(palette = "Dark2", drop=F) +
   scale_color_brewer(palette = "Dark2", drop=F) +
@@ -231,8 +229,8 @@ r22=ggplot(gpdd_d, aes(y=R2abund, x=R2gr, fill=LEclass)) +
 
 r2plots=plot_grid(r2class + theme(legend.position="none"), r2ab + theme(legend.position="none"), nrow = 1, labels=c("A","B"))
 legend <- get_legend(r2class + theme(legend.box.margin = margin(0, 0, 0, 3)))
-plot_grid(r2plots,legend, ncol = 2, rel_widths = c(1,0.25))
-ggsave("./figures/R2LE.png", width = 7, height = 3)
+r2plots1=plot_grid(r2plots,legend, ncol = 2, rel_widths = c(1,0.25))
+ggsave("./figures/R2LE.png", r2plots1, width = 7, height = 3)
 
 r2plots=plot_grid(r2ab + theme(legend.position="none"), r2gr + theme(legend.position="none"), align = 'vh',labels="AUTO")
 legend <- get_legend(r2ab + theme(legend.box.margin = margin(0, 0, 0, 12)))
@@ -259,10 +257,14 @@ mtle=ggplot(gpdd_d, aes(y=LEmean_mo, x=monotonicR2, fill=TaxonomicClass3)) +
   geom_point(size=2.5, pch=21, alpha=0.9) +
   geom_hline(yintercept = 0) +
   classic + labs(fill="Taxonomic\nClass") +scale_fill_brewer(palette = "Dark2")
-mtplots=plot_grid(mtclass + theme(legend.position="none"), mtle + theme(legend.position="none"), nrow = 1, labels=c("A","B"))
+mtplots=plot_grid(mtclass + theme(legend.position="none"), mtle + theme(legend.position="none"), nrow = 1, labels=c("C","D"))
 legend <- get_legend(mtclass + theme(legend.box.margin = margin(0, 0, 0, 3)))
-plot_grid(mtplots,legend, ncol = 2, rel_widths = c(1,0.25))
-ggsave("./figures/monotonictrend2.png", width = 7, height = 3)
+mtplots1=plot_grid(mtplots,legend, ncol = 2, rel_widths = c(1,0.25))
+#ggsave("./figures/monotonictrend2.png", mtplots1, width = 7, height = 3)
+
+#combined R2 and monotonic trend plot for paper
+plot_grid(r2plots1,mtplots1,ncol=1)
+ggsave("./figures/R2monotonicLE.png", width = 7, height = 5)
 
 #results with shortened chaotic series ####
 gpdd_sub=filter(gpdd_d, LEclass=="chaotic" & datasetlength>30 & !is.na(timescale_MinAge)) %>% arrange(desc(timescale_MinAge))
@@ -388,6 +390,53 @@ tstable$psitemed[4]=length(which(gpdd_avg70b$LEmedian>0.01))/length(which(!is.na
 tstable$psitemax[4]=length(which(gpdd_avg70b$LEmax>0.01))/length(which(!is.na(gpdd_avg70b$LEmax)))
 
 tstable[,4:6]=round(tstable[,4:6],2)
+tstable
+
+gpdd_sitetax=gpdd_d %>% group_by(ExactName) %>% 
+  summarise(sitetax=paste0(sort(unique(TaxonomicClass3)),collapse = ", "))
+gpdd_prop=gpdd_d %>% group_by(ExactName) %>% 
+  summarise(nseries=n(),
+            propchaotic=length(which(LEclass=="chaotic"))/length(LEclass),
+            propcorrected=min(max(0,((propchaotic-0.04)/(0.71-0.04))),1)) %>% 
+  left_join(gpdd_sitetax) %>% 
+  mutate(sitetax=factor(sitetax,levels=c("Birds","Bony fishes","Insects","Mammals",
+                                         "Phytoplankton","Phytoplankton, Zooplankton",
+                                         "Birds, Mammals")))
+
+length(which(gpdd_prop$propcorrected>0.5))/length(gpdd_prop$propcorrected)
+length(which(gpdd_prop$propcorrected>0.8))/length(gpdd_prop$propcorrected)
+
+p1=ggplot(gpdd_prop, aes(x=nseries, fill=sitetax)) + 
+  geom_histogram(position = "stack",binwidth = 1,boundary=0.5) + xlab("Number of series per location") +
+  classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
+  labs(y="Count", fill="Taxonomic Group") + scale_fill_brewer(palette = "Dark2") +
+  scale_x_continuous(breaks = seq(0,35,5), expand = expand_scale(mult = c(0, 0.05)))
+
+p2=ggplot(gpdd_prop, aes(x=propcorrected, fill=sitetax)) + 
+  geom_histogram(position = "stack",binwidth = 0.2,boundary=0) + xlab("Probability that 'system' is chaotic") +
+  classic + scale_y_continuous(expand = expand_scale(mult = c(0, 0.05))) +
+  scale_x_continuous(breaks = seq(0,1,0.2)) +
+  labs(y="Count", fill="Taxonomic Group") + scale_fill_brewer(palette = "Dark2")
+#ggsave("./figures/siteprobchaos.png", width = 5.5, height = 3.5)
+
+pcplots=plot_grid(p1 + theme(legend.position="none"), p2 + theme(legend.position="none"), nrow = 1, labels=c("A","B"))
+legend <- get_legend(p1 + theme(legend.box.margin = margin(0, 0, 0, 3), legend.text = element_text(size=8)))
+plot_grid(pcplots,legend, ncol = 2, rel_widths = c(1,0.3))
+ggsave("./figures/siteprobchaos2.png", width = 8, height = 3)
+
+#by taxa
+gpdd_avg = gpdd_avg %>% left_join(gpdd_sitetax)
+gpdd_avg %>% group_by(sitetax) %>% 
+  summarise(n=n(), chaotic = length(which(LEmedian>0.01)), propchaotic=chaotic/n) %>% 
+  filter(n>3) %>% as.data.frame()
+
+#lakes
+lakes2 %>% group_by(Site) %>% 
+  summarise(LEmedian=median(JLE),
+            LEmedian>0.01,
+            nseries=n(),
+            propchaotic=length(which(JLEsign=="chaotic"))/nseries,
+            propcorrected=min(max(0,((propchaotic-0.04)/(0.71-0.04))),1))
 
 # time series plots ####
 
