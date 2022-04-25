@@ -1,10 +1,10 @@
 # Applies Jacobian LE chaos detection method to GPDD
 # Includes selection of E and tau used by RQA
 
-library("rEDM")
-library("dplyr")
-library("tidyr")
-library("purrr")
+library(rEDM)
+library(dplyr)
+library(tidyr)
+library(purrr)
 
 source("./code/Methods/LE_ChaosDetectionMethods.R")
 

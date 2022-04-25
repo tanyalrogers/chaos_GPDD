@@ -101,6 +101,7 @@ er2=ggplot(mar2, aes(x=factor(NoiseLevel2), y=Method2, fill=errorrate)) +
 legend <- get_legend(er1)
 plot_grid(er1+ theme(legend.position="none"),er2+ theme(legend.position="none"), legend, nrow = 3, rel_heights = c(1,1,0.2))
 ggsave("./figures/marginal_errorrates.png", width = 6, height = 6)
+ggsave("./figures/Rogers_ED_Fig1.tiff", compression="lzw", width = 6, height = 6)
 
 #by ts length and error rate (not used)
 mar3=sims_long %>%

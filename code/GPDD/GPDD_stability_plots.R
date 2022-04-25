@@ -52,6 +52,7 @@ ggplot(signcounts, aes(x=TaxonomicClass3, y=LEclass2)) +
   labs(fill="Classification", x="Taxonomic Group") + removefacetbackground +
   scale_fill_brewer(palette = "Paired", direction = -1)
 ggsave("./figures/classification.png", height = 3.5, width = 5)
+ggsave("./figures/Rogers_Fig2.pdf", height = 3.5, width = 5)
 
 #LE vs LE1d ####
 ggplot(filter(gpdd_d, E>1), aes(y=LEmean1d, x=LEmean, fill=factor(E))) + 
@@ -131,6 +132,7 @@ lemass1=ggplot(posLE, aes(y=log10(LEmean), x=log10(Mass_g))) +
   guides(shape = guide_legend(override.aes = list(stroke = c(0.5,0.5,1.25)))) +
   theme(axis.title = element_text(size=12), axis.text = element_text(size=10))
 ggsave("./figures/mass_scaling.png", lemass1, width = 5.25, height = 4)
+ggsave("./figures/Rogers_Fig4.pdf", lemass1, width = 5.25, height = 4)
 
 lemass2=ggplot(posLE, aes(y=log10(LEmean), x=log10(Mass_g))) + 
   ylab(expression(~log[10]~LE~(month^-1))) + xlab(expression(~log[10]~Mass~(g))) +
@@ -178,6 +180,7 @@ left=plot_grid(classgtE + theme(legend.position="none"), LEmgtE + theme(legend.p
 legend <- get_legend(LEmgtE + theme(legend.box.margin = margin(0, 0, 0, 3)))
 plot_grid(left,legend, ncol = 2, rel_widths = c(1,0.1))
 ggsave("./figures/gentime.png", width = 7, height = 3)
+ggsave("./figures/Rogers_Fig3.pdf", width = 7, height = 3)
 
 mod=glm(LEclass01~log10(MinAge_mo), data=gpdd_d, family="binomial")
 car::Anova(mod)
@@ -265,6 +268,7 @@ mtplots1=plot_grid(mtplots,legend, ncol = 2, rel_widths = c(1,0.25))
 #combined R2 and monotonic trend plot for paper
 plot_grid(r2plots1,mtplots1,ncol=1)
 ggsave("./figures/R2monotonicLE.png", width = 7, height = 5)
+ggsave("./figures/Rogers_ED_Fig2.tiff",compression="lzw", width = 7, height = 5)
 
 #results with shortened chaotic series ####
 gpdd_sub=filter(gpdd_d, LEclass=="chaotic" & datasetlength>30 & !is.na(timescale_MinAge)) %>% arrange(desc(timescale_MinAge))
@@ -342,6 +346,7 @@ hmono=ggplot(signcountsmono, aes(x=monoclass, y=LEclass2)) +
 
 plot_grid(hCV,hR2,htheta,hmono,ncol = 2, align = "vh", labels = "AUTO")
 ggsave("./figures/histograms.png", width = 8, height = 6)
+ggsave("./figures/Rogers_Fig1.pdf", width = 8, height = 6)
 
 # restrict ts length and aggregate by site ####
 # for site level, classify using median and max
@@ -425,6 +430,7 @@ pcplots=plot_grid(p1 + theme(legend.position="none"), p2 + theme(legend.position
 legend <- get_legend(p1 + theme(legend.box.margin = margin(0, 0, 0, 3), legend.text = element_text(size=8)))
 plot_grid(pcplots,legend, ncol = 2, rel_widths = c(1,0.3))
 ggsave("./figures/histo_siteprobchaos.png", width = 8, height = 3)
+ggsave("./figures/Rogers_ED_Fig3.tiff", compression="lzw", width = 8, height = 3)
 
 # prob chaos by taxon
 gpdd_avg = gpdd_avg %>% left_join(gpdd_sitetax)
@@ -452,6 +458,7 @@ ggplot(lehisto,aes(x=LEmean_mo,fill=TaxonomicClass3)) +
   scale_fill_brewer(palette = "Dark2", drop=F) +
   removefacetbackground
 ggsave("./figures/lehistos.png", width = 8, height = 3)
+ggsave("./figures/Rogers_ED_Fig4.tiff", compression="lzw", width = 8, height = 3)
 
 # sample time series plots ####
 
@@ -476,3 +483,4 @@ ggplot(gpdd_d_ts_sub, aes(x=SeriesStep, y=PopRescale_log)) +
   classic + removefacetbackground +
   labs(x="Timestep",y="log Scaled Abundance")
 ggsave("figures/sample_timeseries.png",width = 6, height = 7.5)
+ggsave("figures/Rogers_ED_Fig5.tiff", compression="lzw",width = 6, height = 7.5)

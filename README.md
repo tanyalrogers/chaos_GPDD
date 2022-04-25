@@ -1,5 +1,5 @@
 # Chaos in the Global Population Dynamics Database
-This repository contains the data and code associated with the paper "Chaos is not rare in natural ecosystems".  
+This repository contains the data and code associated with the paper "Chaos is not rare in natural ecosystems" by Tanya L. Rogers, Bethany J. Johnson, and Stephan B. Munch.  
 
 We employed 6 chaos detection methods:  
 1. Direct LE estimaton (DLE)
@@ -11,9 +11,9 @@ We employed 6 chaos detection methods:
 
 All methods were applied to simulated data. The most reliable methods (JLE, RQA, PE) were applied to empirical data in the Global Population Dynamics Database (GPDD).
 
-DLE and JLE are implemented in R. For JLE, the code uses rEDM version 0.7.4. Newer versions of rEDM are not compatible.  
+DLE and JLE are implemented in R. For JLE, the code uses [rEDM version 0.7.4](https://github.com/ha0ye/rEDM), in R version 3.6.3. Newer versions of rEDM are not compatible.  
 
-The remaining methods are implemented in MATLAB. The RQA code requires access to the CRP toolbox which must be requested [here](https://tocsy.pik-potsdam.de/CRPtoolbox/).
+The remaining methods are implemented in MATLAB. The RQA code requires access to the CRP toolbox which must be requested [here](https://tocsy.pik-potsdam.de/CRPtoolbox/). Code for the PE, HVG, and CDT methods is included in this repository (sources are listed below, code has not been modified).
 
 
 ## Code files
@@ -60,3 +60,13 @@ Name | Description
 `AndersonGilloolyLEdata.csv` | Empirical LE data from Anderson and Gillooly 2020.
 `lakes_results_smap.csv` | JLE results for lake time series.
 `lakes_ts_metadata.csv` | Life history data for lake time series.
+
+## Sources
+
+RQA: Marwan, N. CRP Toolbox 5.22. http://tocsy.pik-potsdam.de/CRPtoolbox. (2020).
+
+PE: TOCSY - Toolbox for Complex Systems (Recurrence Plots, Cross Recurrence Plots, System Identification, ACE, Nonlinear Wavelet Analysis, Nonlinear Regression Analysis, Adaptive Filtering, Coupling Direction). https://tocsy.pik-potsdam.de/ (2020).
+
+HVG: Iacobello, G. Fast Horizontal Visibility Graph (HVG) for MATLAB (https://www.mathworks.com/matlabcentral/fileexchange/72889-fast-horizontal-visibility-graph-hvg-for-matlab), MATLAB Central File Exchange. (2020).
+
+CDT: Toker, D. The chaos decision tree algorithm. https://doi.org/10.6084/m9.figshare.7476362.v7. (2019).
