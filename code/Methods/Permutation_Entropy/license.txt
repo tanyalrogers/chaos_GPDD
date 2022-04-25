@@ -1,0 +1,8 @@
+Copyright (c) Andreas Müller
+University of Potsdam, Interdisciplinary Center for Dynamics of Complex Systems, Germany
+Potsdam Institute for Climate Impact Research, Complexity Science, Germany
+This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivs 2.0 Germany License.
+https://creativecommons.org/licenses/by-nc-nd/2.0/de/
+https://creativecommons.org/licenses/by-nc-nd/2.0/legalcode
+
+https://tocsy.pik-potsdam.de/petropy.php
