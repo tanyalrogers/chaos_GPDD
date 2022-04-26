@@ -90,3 +90,7 @@ License: [CC-GNU GPL](http://creativecommons.org/licenses/GPL/2.0/)
 Ye, H., Clark, A., Deyle, E. & Munch, S. rEDM: Applications of Empirical Dynamic Modeling from Time Series. https://ha0ye.github.io/rEDM, https://github.com/ha0ye/rEDM. (2019).
 
 Boettiger, C., Harte, T., Chamberlain, S. & Ram, K. rgpdd: R Interface to the Global Population Dynamics Database. https://docs.ropensci.org/rgpdd, https://github.com/ropensci/rgpdd. (2019).
+
+### Data
+
+Please see the associated publication for a full list of data sources and citations.
