@@ -63,10 +63,30 @@ Name | Description
 
 ## Sources
 
-RQA: Marwan, N. CRP Toolbox 5.22. http://tocsy.pik-potsdam.de/CRPtoolbox. (2020).
+All new code associated with this project that not covered by another license is licensed under the Apache License.
 
-PE: TOCSY - Toolbox for Complex Systems (Recurrence Plots, Cross Recurrence Plots, System Identification, ACE, Nonlinear Wavelet Analysis, Nonlinear Regression Analysis, Adaptive Filtering, Coupling Direction). https://tocsy.pik-potsdam.de/ (2020).
+### Redistributed code
 
-HVG: Iacobello, G. Fast Horizontal Visibility Graph (HVG) for MATLAB (https://www.mathworks.com/matlabcentral/fileexchange/72889-fast-horizontal-visibility-graph-hvg-for-matlab), MATLAB Central File Exchange. (2020).
+Licenses are listed and provided adjacent to the source code.
 
-CDT: Toker, D. The chaos decision tree algorithm. https://doi.org/10.6084/m9.figshare.7476362.v7. (2019).
+PE: TOCSY - Toolbox for Complex Systems (Recurrence Plots, Cross Recurrence Plots, System Identification, ACE, Nonlinear Wavelet Analysis, Nonlinear Regression Analysis, Adaptive Filtering, Coupling Direction). https://tocsy.pik-potsdam.de/ (2020).  
+License: [CC-BY-NC-ND](https://creativecommons.org/licenses/by-nc-nd/2.0/legalcode)
+
+HVG: Iacobello, G. Fast Horizontal Visibility Graph (HVG) for MATLAB (https://www.mathworks.com/matlabcentral/fileexchange/72889-fast-horizontal-visibility-graph-hvg-for-matlab), MATLAB Central File Exchange. (2020).  
+License: [BSD](https://opensource.org/licenses/BSD-3-Clause)
+
+CDT: Toker, D. The chaos decision tree algorithm. https://doi.org/10.6084/m9.figshare.7476362.v7. (2019).  
+License: [MIT](https://opensource.org/licenses/MIT)
+
+### Not redistributed
+
+This code must be requested from the authors.
+
+RQA: Marwan, N. CRP Toolbox 5.22. http://tocsy.pik-potsdam.de/CRPtoolbox. (2020).  
+License: [CC-GNU GPL](http://creativecommons.org/licenses/GPL/2.0/)
+
+### R packages used
+
+Ye, H., Clark, A., Deyle, E. & Munch, S. rEDM: Applications of Empirical Dynamic Modeling from Time Series. https://ha0ye.github.io/rEDM, https://github.com/ha0ye/rEDM. (2019).
+
+Boettiger, C., Harte, T., Chamberlain, S. & Ram, K. rgpdd: R Interface to the Global Population Dynamics Database. https://docs.ropensci.org/rgpdd, https://github.com/ropensci/rgpdd. (2019).

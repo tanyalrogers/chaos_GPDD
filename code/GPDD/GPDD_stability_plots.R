@@ -430,7 +430,7 @@ pcplots=plot_grid(p1 + theme(legend.position="none"), p2 + theme(legend.position
 legend <- get_legend(p1 + theme(legend.box.margin = margin(0, 0, 0, 3), legend.text = element_text(size=8)))
 plot_grid(pcplots,legend, ncol = 2, rel_widths = c(1,0.3))
 ggsave("./figures/histo_siteprobchaos.png", width = 8, height = 3)
-ggsave("./figures/Rogers_ED_Fig3.tiff", compression="lzw", width = 8, height = 3)
+ggsave("./figures/Rogers_ED_Fig4.tiff", compression="lzw", width = 8, height = 3)
 
 # prob chaos by taxon
 gpdd_avg = gpdd_avg %>% left_join(gpdd_sitetax)
@@ -458,7 +458,7 @@ ggplot(lehisto,aes(x=LEmean_mo,fill=TaxonomicClass3)) +
   scale_fill_brewer(palette = "Dark2", drop=F) +
   removefacetbackground
 ggsave("./figures/lehistos.png", width = 8, height = 3)
-ggsave("./figures/Rogers_ED_Fig4.tiff", compression="lzw", width = 8, height = 3)
+ggsave("./figures/Rogers_ED_Fig5.tiff", compression="lzw", width = 8, height = 3)
 
 # sample time series plots ####
 
@@ -483,4 +483,4 @@ ggplot(gpdd_d_ts_sub, aes(x=SeriesStep, y=PopRescale_log)) +
   classic + removefacetbackground +
   labs(x="Timestep",y="log Scaled Abundance")
 ggsave("figures/sample_timeseries.png",width = 6, height = 7.5)
-ggsave("figures/Rogers_ED_Fig5.tiff", compression="lzw",width = 6, height = 7.5)
+ggsave("figures/Rogers_ED_Fig6.tiff", compression="lzw",width = 6, height = 7.5)
