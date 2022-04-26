@@ -63,7 +63,7 @@ Name | Description
 
 ## Sources
 
-All new code associated with this project that not covered by another license is licensed under the Apache License.
+All code included in this project that not covered by another license (list below) is licensed under the Apache License. Copyright 2022 Tanya L. Rogers, Bethany J. Johnson, and Stephan B. Munch
 
 ### Redistributed code
 
