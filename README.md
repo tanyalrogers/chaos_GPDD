@@ -1,5 +1,7 @@
 # Chaos in the Global Population Dynamics Database
 
+[![DOI](https://zenodo.org/badge/285905106.svg)](https://zenodo.org/badge/latestdoi/285905106)
+
 This repository contains the data and code associated with the paper "Chaos is not rare in natural ecosystems" by Tanya L. Rogers, Bethany J. Johnson, and Stephan B. Munch.  
 
 We employed 6 chaos detection methods:  
