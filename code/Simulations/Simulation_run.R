@@ -135,7 +135,7 @@ dexport=select(sims_d, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R
                LEmean=minmean, LEmin=minci, LEreg, LEreg_se, NoiseLevel2:LEclass)
 write.csv(dexport,"./data/sims_test_results.csv", row.names = F)
 
-#### Validation dataset with known dynamics ####
+#### Validation dataset #1 ####
 
 sims=read.csv("./data/simulation_dataset_validation.csv")
 
@@ -226,7 +226,7 @@ vexport=select(sims_v, ID:SimNumber, E=Ebest, tau=taubest, theta=thetabest, R2=R
                LEmean=minmean, LEmin=minci, LEreg, LEreg_se, NoiseLevel2:LEclass)
 write.csv(vexport,"./data/sims_validation_results.csv", row.names = F)
 
-#### Observation and process noise dataset with known dynamics ####
+#### Validation dataset #2, observation and process noise ####
 
 sims=read.csv("./data/simulation_dataset_noise_test.csv")
 
@@ -281,7 +281,7 @@ sims_nresults$regLE=map2(sims_n$data, sims_nresults$modelresultsbest, regLE, y="
 sims_n$LEreg=map_dbl(sims_nresults$regLE, ~.x$LEreg)
 sims_n$LEreg_se=map_dbl(sims_nresults$regLE, ~.x$LEreg_se)
 
-save(sims_n, sims_nresults, file = "./data/sims_noise.Rdata")
+#save(sims_n, sims_nresults, file = "./data/sims_noise.Rdata")
 
 # Export results
 

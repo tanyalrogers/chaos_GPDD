@@ -1,4 +1,5 @@
-#LE bootstrapping
+#Applies alternative JLE confidence interval generation methods to first 20 reps of the test dataset
+
 library(dplyr)
 library(tidyr)
 library(rEDM)
@@ -38,6 +39,7 @@ ggplot(err, aes(x=factor(NoiseLevel2), y=factor(TSlength), fill=LEtest)) +
   scale_fill_distiller(palette = "Blues", direction = 1, limits=c(0,1))
 
 # GLE point estimate ####
+
 LEpoint=map2_dbl(modelresultsbest,sims_results_sub$jacobians,LEglobal)
 # save(LEpoint, file = "data/LEpoint.RData")
 
@@ -150,6 +152,7 @@ ggplot(err, aes(x=factor(NoiseLevel2), y=factor(TSlength), fill=LEtest)) +
   scale_fill_distiller(palette = "Blues", direction = 1, limits=c(0,1))
 
 #residual bootstrap method ####
+
 #get residuals for response variable (gr), resample, add to predicted
 #refit model with same hyperpars but new response var and get new theta, same predictors
 #get gle

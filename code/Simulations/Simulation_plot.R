@@ -1,4 +1,4 @@
-# Plots of simuation results
+# Plots of simulation results
 
 library(ggplot2)
 library(dplyr)

@@ -9,8 +9,11 @@
 % Results from running the TEST DATA section are in 
 % "sims_test_results_othermethods.csv" in the GitHub data folders
 %
-% Results from running the VALIDATION DATA section are in 
+% Results from running the VALIDATION DATA 1 section are in 
 % "sims_validation_results_othermethods.csv" in the GitHub data folder
+%
+% Results from running the VALIDATION DATA 2 section are in 
+% "sims_noise_results_othermethods.csv" in the GitHub data folder
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear all; close all; 
 
@@ -62,7 +65,7 @@ output = [cell2table(ID) cell2table(SimNumber) cell2table(RQAclass) cell2table(P
 %writetable(output, 'sims_test_results_othermethods.csv')  % NOTE: "sims_test_results_othermethods.csv" is already in GitHub data folder
 
 
-%% VALIDATION DATA 
+%% VALIDATION DATASET 1
 clear all; close all; 
 
 % Import simulated data with corresponding E and tau values
@@ -110,7 +113,7 @@ output = [cell2table(ID) cell2table(SimNumber) cell2table(RQAclass) cell2table(P
 
 
 
-%% NOISY DATA 
+%% VALIDATION DATASET 2 
 clear all; close all; 
 
 % Import simulated data with corresponding E and tau values

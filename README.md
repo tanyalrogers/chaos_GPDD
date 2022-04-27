@@ -1,4 +1,5 @@
 # Chaos in the Global Population Dynamics Database
+
 This repository contains the data and code associated with the paper "Chaos is not rare in natural ecosystems" by Tanya L. Rogers, Bethany J. Johnson, and Stephan B. Munch.  
 
 We employed 6 chaos detection methods:  
@@ -63,11 +64,11 @@ Name | Description
 
 ## Sources
 
-All code included in this project that not covered by another license (list below) is licensed under the Apache License. Copyright 2022 Tanya L. Rogers, Bethany J. Johnson, and Stephan B. Munch
+All code included in this project that not covered by another license (list below) is licensed under the [0BSD](https://opensource.org/licenses/0BSD) license (public domain).
 
 ### Redistributed code
 
-Licenses are listed and provided adjacent to the source code.
+Licenses are listed and provided adjacent to the associated source code (see subdirectories of code/Methods).
 
 PE: TOCSY - Toolbox for Complex Systems (Recurrence Plots, Cross Recurrence Plots, System Identification, ACE, Nonlinear Wavelet Analysis, Nonlinear Regression Analysis, Adaptive Filtering, Coupling Direction). https://tocsy.pik-potsdam.de/ (2020).  
 License: [CC-BY-NC-ND](https://creativecommons.org/licenses/by-nc-nd/2.0/legalcode)

@@ -1,3 +1,5 @@
+#Functions for alternative JLE confidence interval generation methods
+
 #LE importance sampling
 LEisamp=function(modelresults, nreps=1000) {
 
@@ -75,23 +77,7 @@ LEisamp=function(modelresults, nreps=1000) {
   return(output)
 }
 
-# mvnormsamp=function(n,mu,Sigma) {
-#   A=chol(Sigma)
-#   r=numeric(n*length(mu)) 
-#   z=matrix(rnorm(n=n*length(mu),mean = 0,sd = 1),ncol = n, nrow = length(mu))
-#   f=t(A)%*%z+mu
-#   return(f)
-# }
-
 #Residual bootstrap method
-# LEbootrep=function(modelresults, nreps=100) {
-#   LEvec=numeric(length = nreps)
-#   for(i in 1:nreps) {
-#     LEvec[i]=LEboot(modelresults)
-#   }
-#   return(LEvec)
-# } 
-
 LEboot=function(modelresults, nreps=100) {
   
   LEvec=numeric(length = nreps)
@@ -127,7 +113,7 @@ LEboot=function(modelresults, nreps=100) {
   return(LEvec)
 }
 
-#This computes global LE
+#Global LE (no CI)
 #The global LE is calculated for the whole time series.
 LEglobal=function(modelresults, jacobians) {
   tau=modelresults$modelstats$tau
@@ -169,7 +155,7 @@ LEglobal=function(modelresults, jacobians) {
   return(gle)
 }
 
-#Asymptotic SE for LE
+#Asymptotic SE method
 LEasymp=function(modelresults, jacobians) {
   
   tau=modelresults$modelstats$tau
