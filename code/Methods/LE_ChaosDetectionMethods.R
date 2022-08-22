@@ -6,7 +6,7 @@
 #### Jacobian LE Method (B2) ####
 
 #R2 function
-getR2=function(resultsdf, obse="obs", prede="pred") {
+getR2=function(resultsdf, obse="Observations", prede="Predictions") {
   d=na.omit(select(resultsdf, obse, prede))
   R2=1-sum((d[,obse]-d[,prede])^2)/sum((d[,obse]-mean(d[,obse]))^2)
 }
@@ -81,11 +81,16 @@ besthyper=function(
   model_selection$error1=NA
   
   #generate lags
-  ser_lags=make_block(ser, max_lag = max(model_selection$E*model_selection$tau)+1, tau=1)[,-1]
+  ser_lags=GPEDM::makelags(y=ser, E=max(model_selection$E*model_selection$tau), tau=1, yname = "col1")
+  ser_lags=cbind.data.frame(col1=ser,ser_lags)
+  #new version of make_block doesn't format output the same way and cuts off first E*tau data points
+  
+  #ser_lags=make_block(ser, max_lag = max(model_selection$E*model_selection$tau)+1, tau=1)[,-1]
   #ser_lags=na.omit(ser_lags) #if you wish to standardize targets across models
   
   #run s-map for all parameter sets
   for(i in 1:nrow(model_selection)) {
+   # print(model_selection[i,])
     #if using first difference or growth rate as response, substitute it
     if(pgr=="fd") {
       ser_lags$col1=ser-lag(ser,model_selection$tau[i])
@@ -96,27 +101,36 @@ besthyper=function(
     if(!is.null(yboot)) { #if bootstrap, swap response variable
       ser_lags$col1=yboot
     }
-    simptemp=block_lnlp(ser_lags, tp = 0, method = "s-map", 
+    #new rEDM s-map functions can't handle missing data, have to exclude, 
+    # and then reinsert or will mess up backtransform
+
+    ser_lags_sub=select(ser_lags,c("col1",paste0("col1_",model_selection$tau[i]*(1:model_selection$E[i]))))
+    notmissing=complete.cases(ser_lags_sub)
+    ser_lags_sub2=ser_lags_sub[notmissing,]
+    simptemp=block_lnlp(ser_lags_sub2, tp = 0, method = "s-map", 
                         columns = paste0("col1_",model_selection$tau[i]*(1:model_selection$E[i])), 
                         target_column = "col1", theta=model_selection$theta[i],
-                        first_column_time = F, silent = T, stats_only = F)
-    model_selection$rmse[i]=simptemp$rmse
-    model_selection$npred[i]=simptemp$num_pred
-    resultsdf=simptemp$model_output[[1]]
+                        first_column_time = F, silent = T, stats_only = F) 
+    model_selection$rmse[i]=simptemp$stats$rmse[1]
+    model_selection$npred[i]=simptemp$stats$num_pred[1]
+    resultsdf0=simptemp$model_output[[1]][,-1]
+    resultsdf=as.data.frame(matrix(nrow = length(ser), ncol = ncol(resultsdf0)))
+    colnames(resultsdf)=colnames(resultsdf0)
+    resultsdf[notmissing,]=resultsdf0
     resultsdf$Obs_abund=ser_or
     #get error based on abundance
     #requires backtransformation if using first difference or growth rate
     if(pgr=="none" & ylog==F) {
-      resultsdf$Pred_abund=resultsdf$pred
+      resultsdf$Pred_abund=resultsdf$Predictions
     }  
     if(pgr=="none" & ylog==T) {
-      resultsdf$Pred_abund=exp(resultsdf$pred)
+      resultsdf$Pred_abund=exp(resultsdf$Predictions)
     }
     if(pgr=="fd") {
-      resultsdf$Pred_abund=lag(ser_or,model_selection$tau[i])+resultsdf$pred
+      resultsdf$Pred_abund=lag(ser_or,model_selection$tau[i])+resultsdf$Predictions
     }
     if(pgr=="gr") {
-      resultsdf$Pred_abund=lag(ser_or,model_selection$tau[i])*exp(resultsdf$pred)
+      resultsdf$Pred_abund=lag(ser_or,model_selection$tau[i])*exp(resultsdf$Predictions)
     }
     model_selection$error1[i]=-getR2(resultsdf, obse="Obs_abund", prede="Pred_abund")
   }
@@ -168,7 +182,9 @@ smap_model=function(
   if(pgr=="gr") ser_log=log(ser_or)
   
   #store smap output
-  ser_lags=make_block(ser, max_lag = hyperpars$bestE+1, tau=hyperpars$bestTau)[,-1]
+  ser_lags=GPEDM::makelags(y=ser, E=max(hyperpars$bestE*hyperpars$bestTau), tau=1, yname = "col1")
+  ser_lags=cbind.data.frame(col1=ser,ser_lags)
+  #ser_lags=make_block(ser, max_lag = hyperpars$bestE+1, tau=hyperpars$bestTau)[,-1]
   if(pgr=="fd") {
     ser_lags$col1=ser-lag(ser,hyperpars$bestTau)
   } 
@@ -178,30 +194,38 @@ smap_model=function(
   if(!is.null(yboot)) { #if bootstrap, swap response variable
     ser_lags$col1=yboot
   }
-  smap_results=block_lnlp(ser_lags, tp = 0, method = "s-map", 
+  ser_lags_sub=select(ser_lags,c("col1",paste0("col1_",hyperpars$bestTau*(1:hyperpars$bestE))))
+  notmissing=complete.cases(ser_lags_sub)
+  ser_lags_sub2=ser_lags_sub[notmissing,]
+  
+  smap_results=block_lnlp(ser_lags_sub2, tp = 0, method = "s-map", 
                           columns = paste0("col1_",hyperpars$bestTau*(1:hyperpars$bestE)), 
                           target_column = "col1", theta=hyperpars$bestTheta,
                           first_column_time = F, silent = T,
                           stats_only = F, save_smap_coefficients = T)
-  resultsdf=cbind(smap_results$model_output[[1]], smap_results$smap_coefficients[[1]])
+  colnames(smap_results$smap_coefficients[[1]])=c("Index",paste0("c_",0:hyperpars$bestE))
+  resultsdf0=cbind(smap_results$model_output[[1]][,-1], smap_results$smap_coefficients[[1]][,-1])
+  resultsdf=as.data.frame(matrix(nrow = length(ser), ncol = ncol(resultsdf0)))
+  colnames(resultsdf)=colnames(resultsdf0)
+  resultsdf[notmissing,]=resultsdf0
   
   #untransformed abundance
   resultsdf$Obs_abund=ser_or
   #get untranformed abundance predictions based on model type
   if(pgr=="none" & ylog==F) {
-    resultsdf$Pred_abund=resultsdf$pred
+    resultsdf$Pred_abund=resultsdf$Predictions
     form="ut-ut"
   }  
   if(pgr=="none" & ylog==T) {
-    resultsdf$Pred_abund=exp(resultsdf$pred)
+    resultsdf$Pred_abund=exp(resultsdf$Predictions)
     form="log-log"
   }
   if(pgr=="fd") {
-    resultsdf$Pred_abund=lag(resultsdf$Obs_abund,hyperpars$bestTau)+resultsdf$pred
+    resultsdf$Pred_abund=lag(resultsdf$Obs_abund,hyperpars$bestTau)+resultsdf$Predictions
     form="fd-ut"
   }
   if(pgr=="gr") {
-    resultsdf$Pred_abund=lag(resultsdf$Obs_abund,hyperpars$bestTau)*exp(resultsdf$pred)
+    resultsdf$Pred_abund=lag(resultsdf$Obs_abund,hyperpars$bestTau)*exp(resultsdf$Predictions)
     #ylog is not used to get predictions, but used for jacobian construction
     if(ylog==T) form="gr-log"
     if(ylog==F) form="gr-ut"
@@ -212,8 +236,8 @@ smap_model=function(
   #R2 for untransformed abundance
   modelR2_abund=getR2(resultsdf, obse="Obs_abund", prede="Pred_abund")
   modelstats=data.frame(E=hyperpars$bestE, tau=hyperpars$bestTau, theta=hyperpars$bestTheta, 
-                        Emax=hyperpars$Emax, taumax=hyperpars$taumax, num_pred=smap_results$num_pred,
-                        R2model=modelR2, R2abund=modelR2_abund, rho=smap_results$rho)
+                        Emax=hyperpars$Emax, taumax=hyperpars$taumax, num_pred=smap_results$stats$num_pred[1],
+                        R2model=modelR2, R2abund=modelR2_abund) #, rho=smap_results$stats$rho[1]) #doesn't work for some reason
   return(list(modelstats=modelstats, resultsdf=resultsdf, form=form, smap_results=smap_results, ser_lags=ser_lags))
 }
 
@@ -287,7 +311,7 @@ getJacobians=function(
   
   if(form=="log-log") {
     x_obs=modelresults$resultsdf$Obs_abund
-    r_x=exp(modelresults$resultsdf$pred)
+    r_x=exp(modelresults$resultsdf$Predictions)
     if(ndim==1) {
       jacobians[,,]=(coefs)*r_x/lag(x_obs, tau)
     } else {
@@ -308,7 +332,7 @@ getJacobians=function(
   
   if(form=="gr-ut") {
     x_obs=modelresults$resultsdf$Obs_abund
-    r_x=exp(modelresults$resultsdf$pred)
+    r_x=exp(modelresults$resultsdf$Predictions)
     if(ndim==1) {
       jacobians[,,]=(coefs*lag(x_obs,tau)+1)*r_x
     } else {
@@ -327,7 +351,7 @@ getJacobians=function(
   
   if(form=="gr-log") {
     x_obs=modelresults$resultsdf$Obs_abund
-    r_x=exp(modelresults$resultsdf$pred)
+    r_x=exp(modelresults$resultsdf$Predictions)
     if(ndim==1) {
       jacobians[,,]=(coefs+1)*r_x
     } else {

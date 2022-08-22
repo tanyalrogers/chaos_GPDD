@@ -2,6 +2,7 @@
 # Includes selection of E and tau used by RQA
 
 library(rEDM)
+library(GPEDM)
 library(dplyr)
 library(tidyr)
 library(purrr)
@@ -10,7 +11,7 @@ source("./code/Methods/LE_ChaosDetectionMethods.R")
 
 gpdd_d=read.csv("./data/gpdd_ts_metadata.csv")
 gpdd_d_ts=read.csv("./data/gpdd_timeseries.csv")
-gpdd_d_ts=gpdd_d_ts %>% group_by(MainID) %>% nest(.key="data_rescale") %>% 
+gpdd_d_ts=gpdd_d_ts %>% group_by(MainID) %>% nest_legacy(.key="data_rescale") %>% 
   mutate(data_rescale=map(data_rescale, as.data.frame))
 gpdd_d=left_join(gpdd_d, gpdd_d_ts, by="MainID")
 
