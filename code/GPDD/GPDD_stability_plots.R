@@ -165,18 +165,18 @@ lakepredz=abs(lakepred-log10(lakes_pos$LEmean))/sqrt(ve)
 lakepredz>1.96
 
 #classification and LE vs gen time, E ####
-classgtE=ggplot(gpdd_d, aes(y=LEclass01, x=log10(MinAge_mo), color=E)) + 
+classgtE=ggplot(gpdd_d, aes(y=LEclass01, x=log10(MinAge_mo), color=factor(E))) + 
   ylab("Proportion Chaotic") + xlab(expression(~log[10]~Generation~Time~(months))) + 
   geom_jitter(size=3, alpha=0.7, width=0, height=0.03) +
   stat_smooth(method="glm", method.args=list(family="binomial"), color="black") +
-  classic + scale_color_viridis_c() 
-LEmgtE=ggplot(gpdd_d, aes(y=LEmean_mo, x=log10(MinAge_mo), color=E)) + 
+  classic + scale_color_viridis_d()  + labs(color="E")
+LEmgtE=ggplot(gpdd_d, aes(y=LEmean_mo, x=log10(MinAge_mo), color=factor(E))) + 
   ylab(expression(LE~(month^-1))) + xlab(expression(~log[10]~Generation~Time~(months))) + 
   #geom_linerange(aes(ymin=LEmin_mo,ymax=LEmean_mo), alpha=1,show.legend = F) + 
   geom_point(size=3, alpha=0.7) +
   geom_hline(yintercept = 0) +
-  classic + scale_color_viridis_c() 
-left=plot_grid(classgtE + theme(legend.position="none"), LEmgtE + theme(legend.position="none"), nrow = 1, labels=c("A","B"))
+  classic + scale_color_viridis_d() + labs(color="E")
+left=plot_grid(classgtE + theme(legend.position="none"), LEmgtE + theme(legend.position="none"), nrow = 1, labels=c("a","b"))
 legend <- get_legend(LEmgtE + theme(legend.box.margin = margin(0, 0, 0, 3)))
 plot_grid(left,legend, ncol = 2, rel_widths = c(1,0.1))
 ggsave("./figures/gentime.png", width = 7, height = 3)
@@ -230,7 +230,7 @@ r22=ggplot(gpdd_d, aes(y=R2abund, x=R2gr, fill=LEclass)) +
   geom_hline(yintercept = 0.2, lty=2) + geom_vline(xintercept = 0.2, lty=2) + 
   classic + labs(fill="Classification") + scale_fill_brewer(palette = "Paired", direction = -1)
 
-r2plots=plot_grid(r2class + theme(legend.position="none"), r2ab + theme(legend.position="none"), nrow = 1, labels=c("A","B"))
+r2plots=plot_grid(r2class + theme(legend.position="none"), r2ab + theme(legend.position="none"), nrow = 1, labels=c("a","b"))
 legend <- get_legend(r2class + theme(legend.box.margin = margin(0, 0, 0, 3)))
 r2plots1=plot_grid(r2plots,legend, ncol = 2, rel_widths = c(1,0.25))
 #ggsave("./figures/R2LE.png", r2plots1, width = 7, height = 3)
@@ -260,7 +260,7 @@ mtle=ggplot(gpdd_d, aes(y=LEmean_mo, x=monotonicR2, fill=TaxonomicClass3)) +
   geom_point(size=2.5, pch=21, alpha=0.9) +
   geom_hline(yintercept = 0) +
   classic + labs(fill="Taxonomic\nClass") +scale_fill_brewer(palette = "Dark2")
-mtplots=plot_grid(mtclass + theme(legend.position="none"), mtle + theme(legend.position="none"), nrow = 1, labels=c("C","D"))
+mtplots=plot_grid(mtclass + theme(legend.position="none"), mtle + theme(legend.position="none"), nrow = 1, labels=c("c","d"))
 legend <- get_legend(mtclass + theme(legend.box.margin = margin(0, 0, 0, 3)))
 mtplots1=plot_grid(mtplots,legend, ncol = 2, rel_widths = c(1,0.25))
 #ggsave("./figures/monotonictrend.png", mtplots1, width = 7, height = 3)
@@ -426,7 +426,7 @@ p2=ggplot(gpdd_prop, aes(x=propcorrected, fill=sitetax)) +
   labs(y="Count", fill="Taxonomic Group") + scale_fill_brewer(palette = "Dark2")
 #ggsave("./figures/siteprobchaos.png", width = 5.5, height = 3.5)
 
-pcplots=plot_grid(p1 + theme(legend.position="none"), p2 + theme(legend.position="none"), nrow = 1, labels=c("A","B"))
+pcplots=plot_grid(p1 + theme(legend.position="none"), p2 + theme(legend.position="none"), nrow = 1, labels=c("a","b"))
 legend <- get_legend(p1 + theme(legend.box.margin = margin(0, 0, 0, 3), legend.text = element_text(size=8)))
 plot_grid(pcplots,legend, ncol = 2, rel_widths = c(1,0.3))
 ggsave("./figures/histo_siteprobchaos.png", width = 8, height = 3)
